@@ -29,7 +29,6 @@ cost compared to traditional rule-based heuristics.
 ## Core Concepts Demonstrated
 - Cost-Sensitive Learning
 - Decision Systems Engineering
-- Decision Systems Engineering
 - Economic Optimization vs Accuracy Optimization
 - Simulation-Based Experimental Design
 ## This project demonstrates how machine learning systems should be evaluated not only on prediction accuracy but on real-world economic outcomes.
