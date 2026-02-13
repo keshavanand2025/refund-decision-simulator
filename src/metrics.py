@@ -1,16 +1,11 @@
-from metrics import calculate_total_refund_cost
+def calculate_total_refund_cost(decisions, order_values):
+    total = 0
+    for d, value in zip(decisions, order_values):
+        if d == 1:
+            total += value
+    return total
 
-# Rule-based cost (full dataset)
-rule_cost = calculate_total_refund_cost(
-    data["rule_prediction"],
-    data["order_amount"]
-)
 
-# ML cost (test set only)
-ml_cost = calculate_total_refund_cost(
-    ml_predictions,
-    data.loc[X_test.index, "order_amount"]
-)
-
-print("Rule-Based Total Cost:", rule_cost)
-print("ML-Based Total Cost:", ml_cost)
+def calculate_accuracy(predictions, actual):
+    correct = sum(p == a for p, a in zip(predictions, actual))
+    return correct / len(actual)
