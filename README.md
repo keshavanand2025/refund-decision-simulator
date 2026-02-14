@@ -31,4 +31,24 @@ cost compared to traditional rule-based heuristics.
 - Decision Systems Engineering
 - Economic Optimization vs Accuracy Optimization
 - Simulation-Based Experimental Design
+## Results Summary
+
+On the test dataset:
+
+- Rule-Based Test Cost: ₹128,401
+- ML-Based Test Cost: ₹162,748
+
+Although ML slightly improved prediction patterns, 
+the rule-based system achieved a lower economic cost 
+under the defined cost model.
+
+This demonstrates that optimizing for accuracy alone 
+does not guarantee optimal economic outcomes.
+## Limitations
+
+- Synthetic dataset (simulated environment)
+- Simple logistic regression baseline
+- Static cost assumptions
+
+
 ## This project demonstrates how machine learning systems should be evaluated not only on prediction accuracy but on real-world economic outcomes.
