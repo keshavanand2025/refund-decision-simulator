@@ -49,6 +49,3 @@ does not guarantee optimal economic outcomes.
 - Synthetic dataset (simulated environment)
 - Simple logistic regression baseline
 - Static cost assumptions
-
-
-## This project demonstrates how machine learning systems should be evaluated not only on prediction accuracy but on real-world economic outcomes.
