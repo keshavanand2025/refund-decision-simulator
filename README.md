@@ -43,25 +43,54 @@ graph TD
 ```
 refund-decision-simulator/
 ├── src/
-│   ├── __init__.py            # Package init with public API exports
-│   ├── config.py              # Centralized configuration (dataclass)
-│   ├── data_generator.py      # Synthetic dataset generation
-│   ├── rule_engine.py         # 3 rule-based strategies
-│   ├── model.py               # ML pipeline (4 models, GridSearchCV)
-│   ├── metrics.py             # Economic cost + classification metrics
-│   └── visualization.py       # Professional dark-theme plots
+│   ├── __init__.py              # Package init with public API exports
+│   ├── config.py                # Centralized configuration (dataclass)
+│   ├── data_generator.py        # Synthetic dataset generation
+│   ├── rule_engine.py           # 3 rule-based strategies
+│   ├── model.py                 # ML pipeline (4 models, GridSearchCV)
+│   ├── metrics.py               # Economic cost + classification metrics
+│   ├── visualization.py         # Professional dark-theme plots
+│   ├── cost_sensitive_model.py  # 🆕 Per-instance cost-weighted training
+│   ├── threshold_optimizer.py   # 🆕 Cost-optimal threshold search
+│   ├── sensitivity_analysis.py  # 🆕 Dynamic cost sensitivity analysis
+│   └── pareto_analysis.py       # 🆕 Multi-objective Pareto front
 ├── tests/
 │   ├── __init__.py
-│   ├── test_data_generator.py # 14 tests
-│   ├── test_rule_engine.py    # 16 tests
-│   ├── test_model.py          # 13 tests
-│   └── test_metrics.py        # 12 tests
-├── refund_decision_simulator.ipynb  # Main notebook (10 sections)
-├── requirements.txt           # Pinned dependencies
+│   ├── test_data_generator.py   # 14 tests
+│   ├── test_rule_engine.py      # 16 tests
+│   ├── test_model.py            # 13 tests
+│   ├── test_metrics.py          # 16 tests
+│   └── test_novel.py            # 🆕 20+ tests for novel contributions
+├── refund_decision_simulator.ipynb   # Main notebook (10 sections)
+├── research_analysis.ipynb           # 🆕 Research notebook (4 novel contributions)
+├── requirements.txt
 ├── .gitignore
 ├── LICENSE
 └── README.md
 ```
+
+---
+
+## 🔬 Novel Research Contributions
+
+This project includes **4 novel contributions** not commonly found in existing literature:
+
+### 1. Cost-Sensitive Custom Loss Training (`src/cost_sensitive_model.py`)
+Per-instance sample weights derived from the economic cost model, so models **learn to minimize cost**, not just accuracy. Unlike standard class-weight balancing, this uses instance-level economic information.
+
+### 2. Optimal Decision Threshold Search (`src/threshold_optimizer.py`)
+Sweeps decision thresholds from 0.0 to 1.0 and proves the **cost-optimal threshold ≠ 0.5**. Demonstrates that threshold selection should be driven by business objectives, not statistical convention.
+
+### 3. Dynamic Cost Sensitivity Analysis (`src/sensitivity_analysis.py`)
+Shows that the optimal strategy is **environment-dependent**:
+- Varies `retention_value` (₹100 → ₹2000) and `fraud_penalty_multiplier` (1× → 5×)
+- Generates 2D heatmaps showing which strategy wins in each cost regime
+- Identifies crossover points where the optimal strategy switches
+
+### 4. Pareto Front Analysis (`src/pareto_analysis.py`)
+Frames strategy selection as a **multi-objective optimization** problem (accuracy vs cost). Identifies Pareto-optimal strategies and dominated strategies, with extended analysis across multiple thresholds per model.
+
+> See `research_analysis.ipynb` for the full analysis with visualizations.
 
 ---
 
@@ -87,13 +116,15 @@ venv\Scripts\activate     # Windows
 pip install -r requirements.txt
 ```
 
-### Running the Notebook
+### Running the Notebooks
 
 ```bash
+# Main analysis
 jupyter notebook refund_decision_simulator.ipynb
-```
 
-Or run in Google Colab by uploading the notebook and `src/` directory.
+# Research contributions
+jupyter notebook research_analysis.ipynb
+```
 
 ---
 
@@ -153,7 +184,7 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 
 - **Classification**: Accuracy, Precision, Recall, F1, AUC-ROC
 - **Economic**: Total cost, refund cost, fraud penalty, retention loss
-- **Visualization**: Confusion matrices, ROC curves, feature importance, cost breakdown
+- **Visualization**: Confusion matrices, ROC curves, feature importance, cost breakdown, Pareto fronts, sensitivity heatmaps
 
 ---
 
@@ -162,6 +193,9 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 - **Cost-Sensitive Decision Making** — Not all errors are equal
 - **Decision Systems Engineering** — Rule-based vs learned approaches
 - **Economic Optimization vs Accuracy Optimization** — Different objectives, different winners
+- **Multi-Objective Optimization** — Pareto front analysis for tradeoff-aware decisions
+- **Threshold Engineering** — Optimal probability cutoffs for cost minimization
+- **Sensitivity Analysis** — Environment-dependent strategy selection
 - **Simulation-Based Experimental Design** — Controlled synthetic environment
 - **ML Engineering Best Practices** — Modular code, type hints, tests, reproducibility
 
@@ -170,7 +204,7 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 ## ⚠️ Limitations
 
 - Synthetic dataset (simulated environment, not real-world)
-- Static cost assumptions (real costs vary by segment)
+- Static cost assumptions per run (addressed by sensitivity analysis)
 - No temporal dynamics (fraud patterns evolve)
 - Limited feature set (real systems use 50+ features)
 
@@ -178,11 +212,14 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 
 ## 🔮 Future Work
 
-- [ ] Implement cost-sensitive learning with custom loss functions
-- [ ] Add probability threshold optimization
+- [x] ~~Implement cost-sensitive learning with custom loss functions~~
+- [x] ~~Add probability threshold optimization~~
+- [x] ~~Pareto front multi-objective analysis~~
+- [x] ~~Dynamic cost sensitivity analysis~~
 - [ ] Test with real-world anonymized datasets
 - [ ] Build a real-time decision REST API
 - [ ] Add A/B testing simulation framework
+- [ ] Implement temporal drift analysis
 
 ---
 
