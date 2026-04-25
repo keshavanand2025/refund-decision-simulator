@@ -1,10 +1,10 @@
-# 🔁 Refund Decision Simulator
+# 🔁 CODA: Cost-Optimal Decision Algorithm
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-pytest-orange.svg)](#-running-tests)
 
-> **Simulation comparing rule-based vs ML refund decision systems with economic cost evaluation.**
+> **Official repository for the paper: "CODA: Cost-Optimal Decision Algorithm for Fraud Detection in Quick-Commerce Platforms"**
 
 ---
 
@@ -13,7 +13,8 @@
 Online platforms make thousands of refund decisions daily. This project demonstrates that **optimizing for classification accuracy alone does not guarantee optimal economic outcomes**, by comparing:
 
 - **3 Rule-Based Strategies** — Simple, Conservative, and Lenient heuristics
-- **4 ML Models** — Logistic Regression, Random Forest, Gradient Boosting, XGBoost
+- **6 ML Models** — Logistic Regression, Random Forest, Gradient Boosting, XGBoost, LightGBM, and Cost-Sensitive Baselines (MetaCost, CS-SVM)
+- **3 Datasets** — Synthetic ($N=1,000$), IEEE-CIS ($N=10,000$), and PaySim ($N=10,000$)
 - **Economic Cost Function** — Models refund cost, fraud penalty, and customer retention loss
 
 ### Key Insight
@@ -46,14 +47,17 @@ refund-decision-simulator/
 │   ├── __init__.py              # Package init with public API exports
 │   ├── config.py                # Centralized configuration (dataclass)
 │   ├── data_generator.py        # Synthetic dataset generation
+│   ├── dataset_loader.py        # 🆕 IEEE-CIS and PaySim loaders with PCA alignment
 │   ├── rule_engine.py           # 3 rule-based strategies
-│   ├── model.py                 # ML pipeline (4 models, GridSearchCV)
+│   ├── model.py                 # ML pipeline (6 models, GridSearchCV)
 │   ├── metrics.py               # Economic cost + classification metrics
 │   ├── visualization.py         # Professional dark-theme plots
-│   ├── cost_sensitive_model.py  # 🆕 Per-instance cost-weighted training
-│   ├── threshold_optimizer.py   # 🆕 Cost-optimal threshold search
-│   ├── sensitivity_analysis.py  # 🆕 Dynamic cost sensitivity analysis
-│   └── pareto_analysis.py       # 🆕 Multi-objective Pareto front
+│   ├── coda.py                  # 🆕 Formal CODA Algorithm (Algorithm 1) & 3-Tier Decision
+│   ├── cost_sensitive_model.py  # Per-instance cost-weighted training
+│   ├── threshold_optimizer.py   # Cost-optimal threshold search
+│   ├── sensitivity_analysis.py  # Dynamic cost sensitivity analysis
+│   ├── pareto_analysis.py       # Multi-objective Pareto front
+│   └── bootstrap_validation.py  # 🆕 Statistical validation (Bootstrap resampling)
 ├── tests/
 │   ├── __init__.py
 │   ├── test_data_generator.py   # 14 tests
@@ -73,7 +77,7 @@ refund-decision-simulator/
 
 ## 🔬 Novel Research Contributions
 
-This project includes **4 novel contributions** not commonly found in existing literature:
+This project includes **6 formal contributions** aligned with the IEEE paper:
 
 ### 1. Cost-Sensitive Custom Loss Training (`src/cost_sensitive_model.py`)
 Per-instance sample weights derived from the economic cost model, so models **learn to minimize cost**, not just accuracy. Unlike standard class-weight balancing, this uses instance-level economic information.
@@ -81,14 +85,19 @@ Per-instance sample weights derived from the economic cost model, so models **le
 ### 2. Optimal Decision Threshold Search (`src/threshold_optimizer.py`)
 Sweeps decision thresholds from 0.0 to 1.0 and proves the **cost-optimal threshold ≠ 0.5**. Demonstrates that threshold selection should be driven by business objectives, not statistical convention.
 
-### 3. Dynamic Cost Sensitivity Analysis (`src/sensitivity_analysis.py`)
+### 3. The CODA Algorithm & Ablation Study (`src/coda.py`)
+Unifies weighting and threshold search into a single reproducible pipeline (Algorithm 1). Includes a Three-Tier Decision Output (Auto-Approve, Manual Review, Auto-Deny) and an ablation study to validate component synergy.
+
+### 4. Dynamic Cost Sensitivity Analysis (`src/sensitivity_analysis.py`)
 Shows that the optimal strategy is **environment-dependent**:
 - Varies `retention_value` (₹100 → ₹2000) and `fraud_penalty_multiplier` (1× → 5×)
 - Generates 2D heatmaps showing which strategy wins in each cost regime
-- Identifies crossover points where the optimal strategy switches
 
-### 4. Pareto Front Analysis (`src/pareto_analysis.py`)
-Frames strategy selection as a **multi-objective optimization** problem (accuracy vs cost). Identifies Pareto-optimal strategies and dominated strategies, with extended analysis across multiple thresholds per model.
+### 5. Multi-Dataset Validation & Pareto Analysis (`src/dataset_loader.py`, `src/pareto_analysis.py`)
+Frames strategy selection as a **multi-objective optimization** problem across 3 datasets (Synthetic, IEEE-CIS, PaySim). Identifies Pareto-optimal strategies using PCA-aligned feature spaces.
+
+### 6. Statistical Bootstrap Validation (`src/bootstrap_validation.py`)
+Employs Bootstrap resampling ($B=1,000$) to calculate 95% Confidence Intervals and pairwise $p$-values, proving cost reductions are statistically significant ($p < 0.01$).
 
 > See `research_analysis.ipynb` for the full analysis with visualizations.
 
@@ -142,14 +151,17 @@ python -m pytest tests/ -v --cov=src
 
 ## 📊 Methodology
 
-### Data Generation
-- **1000 synthetic orders** with 5 features:
+### Data Generation & Loading
+- **Synthetic Dataset** ($N=1,000$): Generated with 5 features:
   - `order_amount` (₹100–₹2000)
   - `delay_minutes` (0–90 min)
-  - `previous_refunds` (0–4)
+  - `previous_refunds` (0–10)
   - `fraud_score` (0.0–1.0)
   - `complaint_severity` (1–5)
-- Target label generated via **sigmoid** over weighted feature combination
+- **Real-World Datasets**:
+  - **IEEE-CIS** ($N=10,000$, 3.5% fraud)
+  - **PaySim** ($N=10,000$, 0.13% fraud)
+  - Both datasets are aligned to the 5-feature space using **PCA** (capturing >70% variance).
 
 ### Rule-Based Strategies
 
@@ -167,6 +179,8 @@ python -m pytest tests/ -v --cov=src
 | Random Forest | n_estimators, max_depth, min_samples_split |
 | Gradient Boosting | n_estimators, learning_rate, max_depth |
 | XGBoost | n_estimators, learning_rate, max_depth |
+| LightGBM | State-of-the-art cost performer |
+| MetaCost & CS-SVM | Established cost-sensitive baselines |
 
 All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearchCV**.
 
@@ -216,7 +230,8 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 - [x] ~~Add probability threshold optimization~~
 - [x] ~~Pareto front multi-objective analysis~~
 - [x] ~~Dynamic cost sensitivity analysis~~
-- [ ] Test with real-world anonymized datasets
+- [x] ~~Test with real-world anonymized datasets (IEEE-CIS, PaySim)~~
+- [x] ~~Formal algorithm & ablation study (CODA)~~
 - [ ] Build a real-time decision REST API
 - [ ] Add A/B testing simulation framework
 - [ ] Implement temporal drift analysis
