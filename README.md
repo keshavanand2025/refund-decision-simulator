@@ -12,13 +12,14 @@
 
 Online platforms make thousands of refund decisions daily. This project demonstrates that **optimizing for classification accuracy alone does not guarantee optimal economic outcomes**. CODA formalises this insight into a reproducible algorithm with:
 
-- **6 ML Models** — Logistic Regression, Random Forest, Gradient Boosting, XGBoost, LightGBM, and cost-weighted variants
+- **6 ML Models + CHL-LightGBM baseline** — XGBoost, LightGBM, Gradient Boosting, Random Forest, MetaCost, CS-SVM
 - **3 Rule-Based Strategies** — Simple, Conservative, and Lenient heuristics
-- **3 Datasets** — Synthetic (N=1,000), IEEE-CIS (N=10,000), PaySim (N=10,000)
+- **3 Datasets** — Synthetic (N=1,000), IEEE-CIS (N=590,540 full scale), PaySim (N=10,000)
 - **Three-Tier Decision Output** — Auto-approve / Manual review / Auto-deny
+- **CODA+ Extension** — Dynamic cost learning with instance-adaptive α(x), β(x)
 
 ### Key Insight
-> A model with higher accuracy can have **higher economic cost** than a simpler model. CODA recovers **18–25% of economic cost** over accuracy-optimal baselines by combining per-instance cost weighting with optimal threshold search.
+> A model with higher accuracy can have **higher economic cost** than a simpler model. CODA+ achieves **25.5% cost reduction** on full-scale IEEE-CIS (590K transactions). CHL-LightGBM has the best AUC (0.919) but the **worst economic cost** (+22.1%) due to calibration failure.
 
 ---
 
@@ -158,11 +159,11 @@ Production-ready output: **auto-approve** (~72%), **manual review** (~15%), **au
 
 | Dataset | N | Fraud % | Source |
 |---------|---|---------|--------|
-| Synthetic | 1,000 | 20% | `src/data_generator.py` |
-| IEEE-CIS | 10,000 | 3.5% | `src/dataset_loader.py` → [Kaggle](https://www.kaggle.com/c/ieee-fraud-detection) |
-| PaySim | 10,000 | 0.13% | `src/dataset_loader.py` → [Kaggle](https://www.kaggle.com/datasets/ealaxi/paysim1) |
+| Synthetic | 1,000 | 20% (elevated for stress testing) | `src/data_generator.py` |
+| IEEE-CIS | **590,540** (full scale) | 3.50% | [Kaggle](https://www.kaggle.com/c/ieee-fraud-detection) |
+| PaySim | 10,000 (subsample) | 0.13% | [Kaggle](https://www.kaggle.com/datasets/ealaxi/paysim1) |
 
-Real-world datasets are PCA-projected to a 5D feature space aligned with synthetic features (73.4% variance explained).
+IEEE-CIS is used at **full scale (590K)** with 194 numeric features and **no PCA projection** — this is the primary benchmark. PaySim uses a 10K stratified subsample to balance tractability with sufficient fraud-class representation.
 
 ---
 
@@ -261,13 +262,17 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 
 | Finding | Result |
 |---------|--------|
-| Accuracy ≠ Cost-Optimality | XGBoost: 16.7% cost premium despite highest accuracy |
-| CODA cost recovery | 18–25% across all datasets |
+| Accuracy ≠ Cost-Optimality | XGBoost: highest accuracy but 16.7% cost premium |
+| **CODA+ (full-scale IEEE-CIS)** | **−25.5% cost reduction** (590K transactions, no PCA) |
+| CODA static | −4.1% on full-scale IEEE-CIS |
+| CHL-LightGBM | Best AUC (0.919) but **worst cost (+22.1%)** — calibration failure |
+| Brier scores | LightGBM: 0.021 (best), CHL: 0.095 (worst) |
+| Held-out α/β validation | β(x) R²=0.77 on held-out data |
 | Ablation: weighting only | −12.1% cost reduction |
 | Ablation: threshold only | −17.0% cost reduction |
 | Ablation: full CODA | −23.8% cost reduction |
+| Ablation: full CODA+ | −29.0% cost reduction |
 | Bootstrap significance | p < 0.01 (B = 1,000) |
-| Projected savings | ₹9–12 lakh/month at 10K orders/day |
 
 ---
 
@@ -287,10 +292,12 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 
 ## ⚠️ Limitations
 
-- Synthetic 20% fraud rate vs. real-world 2–5% may affect threshold calibration
+- Synthetic dataset uses 20% fraud prevalence (elevated vs. real-world 2–5%) — serves as controlled stress test only
+- PaySim uses 10K subsample from 6.3M transactions; full-scale evaluation is future work
+- CODA+ cost regressors use feature-derived proxies, not observed business outcomes
+- Linear Ridge models for α(x)/β(x) — R²=0.77 for β(x) leaves room for nonlinear models
 - Missing high-signal features (account age, device fingerprinting)
 - AI-generated image fraud not addressed in tabular framework
-- Static cost parameters (α, β) fixed at defaults
 - Offline only — end-to-end latency not benchmarked
 
 ---
@@ -306,9 +313,15 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 - [x] ~~Bootstrap resampling validation~~
 - [x] ~~Multi-dataset validation (IEEE-CIS, PaySim)~~
 - [x] ~~LightGBM integration~~
+- [x] ~~CODA+ dynamic cost learning (α(x), β(x))~~
+- [x] ~~Full-scale IEEE-CIS (590K) without PCA~~
+- [x] ~~CHL-LightGBM baseline comparison~~
+- [x] ~~Brier scores and calibration analysis~~
+- [ ] Full-scale PaySim (6.3M) evaluation
 - [ ] Real-time REST API via FastAPI
 - [ ] Online learning and concept drift adaptation
-- [ ] Dynamic cost parameters (learn α, β from outcomes)
+- [ ] Nonlinear cost models (neural network or gradient boosting for α/β)
+- [ ] Calibrating α(x)/β(x) against observed chargeback rates
 - [ ] Multimodal claim verification (GAN detection)
 
 ---
