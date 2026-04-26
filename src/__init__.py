@@ -15,7 +15,7 @@ Includes the Cost-Optimal Decision Algorithm (CODA) with:
 Modules:
     - config: Centralized project configuration and constants
     - data_generator: Synthetic dataset generation
-    - dataset_loader: IEEE-CIS and PaySim dataset loading with PCA
+    - dataset_loader: IEEE-CIS (full-scale) and PaySim dataset loading
     - rule_engine: Rule-based decision strategies
     - model: ML model training, tuning, and evaluation
     - metrics: Economic cost and classification metrics
@@ -24,7 +24,7 @@ Modules:
     - threshold_optimizer: Cost-optimal threshold search
     - sensitivity_analysis: Dynamic cost sensitivity analysis
     - pareto_analysis: Multi-objective Pareto front analysis
-    - coda: CODA algorithm, three-tier decisions, bootstrap, ablation
+    - coda: CODA and CODA+ algorithms, three-tier decisions, bootstrap, ablation
 """
 
 from src.config import Config
