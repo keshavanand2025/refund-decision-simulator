@@ -10,9 +10,6 @@ Supported Models:
     - Random Forest
     - Gradient Boosting
     - XGBoost
-    - LightGBM
-    - MetaCost (wrapper)
-    - CS-SVM (cost-sensitive SVM)
 """
 
 import warnings
@@ -20,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.model_selection import (
@@ -31,16 +27,16 @@ from sklearn.model_selection import (
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
-from sklearn.svm import SVC
-
 try:
     from xgboost import XGBClassifier
+
     _XGBOOST_AVAILABLE = True
 except ImportError:
     _XGBOOST_AVAILABLE = False
 
 try:
     from lightgbm import LGBMClassifier
+
     _LIGHTGBM_AVAILABLE = True
 except ImportError:
     _LIGHTGBM_AVAILABLE = False
@@ -50,91 +46,12 @@ from src.config import Config
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-# ---------- MetaCost Wrapper ----------
-
-class MetaCostClassifier(BaseEstimator, ClassifierMixin):
-    """MetaCost wrapper: resamples training data based on cost matrix.
-
-    Implements the MetaCost algorithm (Domingos, 1999) using a
-    RandomForest base learner with cost-proportional resampling.
-    """
-
-    def __init__(self, random_state=42, n_estimators=100):
-        self.random_state = random_state
-        self.n_estimators = n_estimators
-        self.base_model_ = None
-
-    def fit(self, X, y, sample_weight=None):
-        rng = np.random.RandomState(self.random_state)
-        # Cost-proportional resampling
-        if sample_weight is not None:
-            probs = sample_weight / sample_weight.sum()
-            idx = rng.choice(len(X), size=len(X), replace=True, p=probs)
-            X_resampled = X[idx] if isinstance(X, np.ndarray) else X.iloc[idx]
-            y_resampled = y[idx] if isinstance(y, np.ndarray) else y.iloc[idx]
-        else:
-            X_resampled, y_resampled = X, y
-
-        self.base_model_ = RandomForestClassifier(
-            n_estimators=self.n_estimators,
-            random_state=self.random_state,
-        )
-        self.base_model_.fit(X_resampled, y_resampled)
-        self.classes_ = self.base_model_.classes_
-        return self
-
-    def predict(self, X):
-        return self.base_model_.predict(X)
-
-    def predict_proba(self, X):
-        return self.base_model_.predict_proba(X)
-
-    @property
-    def feature_importances_(self):
-        return self.base_model_.feature_importances_
-
-
-# ---------- CS-SVM Wrapper ----------
-
-class CostSensitiveSVM(BaseEstimator, ClassifierMixin):
-    """Cost-Sensitive SVM with asymmetric C+/C- penalties.
-
-    Uses sklearn's SVC with class_weight to encode cost asymmetry.
-    """
-
-    def __init__(self, random_state=42, C=1.0, cost_ratio=2.0):
-        self.random_state = random_state
-        self.C = C
-        self.cost_ratio = cost_ratio
-        self.model_ = None
-
-    def fit(self, X, y, sample_weight=None):
-        self.model_ = SVC(
-            C=self.C,
-            kernel='rbf',
-            class_weight={0: 1.0, 1: self.cost_ratio},
-            probability=True,
-            random_state=self.random_state,
-        )
-        self.model_.fit(X, y)
-        self.classes_ = self.model_.classes_
-        return self
-
-    def predict(self, X):
-        return self.model_.predict(X)
-
-    def predict_proba(self, X):
-        return self.model_.predict_proba(X)
-
-
 # ---------- Model Registry ----------
 
 _MODEL_REGISTRY: Dict[str, Any] = {
     "LogisticRegression": LogisticRegression,
     "RandomForest": RandomForestClassifier,
     "GradientBoosting": GradientBoostingClassifier,
-    "MetaCost": MetaCostClassifier,
-    "CS-SVM": CostSensitiveSVM,
 }
 
 if _XGBOOST_AVAILABLE:

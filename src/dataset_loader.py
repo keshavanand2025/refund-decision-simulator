@@ -2,12 +2,13 @@
 Dataset Loader Module
 ======================
 
-Handles loading and preprocessing of real-world datasets:
+Loads and preprocesses real-world datasets for cross-domain validation:
     - IEEE-CIS Fraud Detection (Kaggle)
     - PaySim Mobile Money Simulator
 
-Includes PCA-based feature alignment to harmonise external datasets
-with the 5-feature synthetic feature space.
+Both datasets are harmonised to a 5-feature PCA-projected space
+aligned with the synthetic feature axes, following the methodology
+described in Dal Pozzolo et al. [9].
 """
 
 from typing import Optional, Tuple
@@ -23,159 +24,196 @@ from src.config import Config
 def load_ieee_cis(
     filepath: str,
     n_samples: int = 10000,
-    random_seed: int = 42,
+    random_state: int = 42,
 ) -> pd.DataFrame:
-    """Load and preprocess IEEE-CIS Fraud Detection dataset.
+    """
+    Load and preprocess the IEEE-CIS Fraud Detection dataset.
 
-    Applies PCA projection to align with the 5-feature synthetic space.
-    The top 5 principal components explain ~73.4% of total variance.
+    Applies stratified subsampling and PCA projection to align
+    with the 5-feature synthetic space.
 
     Args:
         filepath: Path to the IEEE-CIS transaction CSV file.
-        n_samples: Number of stratified samples to draw.
-        random_seed: Random seed for reproducibility.
+        n_samples: Number of samples to subsample (stratified).
+        random_state: Random seed for reproducibility.
 
     Returns:
         DataFrame with columns: order_amount, fraud_score,
         previous_refunds, delivery_delay, complaint_severity,
-        refunded.
+        refunded (target).
     """
     df = pd.read_csv(filepath)
 
     # Identify target column
-    target_col = 'isFraud' if 'isFraud' in df.columns else 'is_fraud'
+    target_col = "isFraud" if "isFraud" in df.columns else "is_fraud"
 
-    # Select numeric columns only
+    # Select numeric features only
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     if target_col in numeric_cols:
         numeric_cols.remove(target_col)
 
-    # Drop columns with too many NaNs (> 50%)
-    valid_cols = [c for c in numeric_cols if df[c].isna().mean() < 0.5]
+    # Drop columns with >50% missing
+    valid_cols = [
+        c for c in numeric_cols
+        if df[c].isna().mean() < 0.5
+    ]
 
     X = df[valid_cols].fillna(0)
-    y = df[target_col].values
+    y = df[target_col]
 
     # Stratified subsample
-    rng = np.random.RandomState(random_seed)
-    fraud_idx = np.where(y == 1)[0]
-    legit_idx = np.where(y == 0)[0]
+    np.random.seed(random_state)
+    fraud_idx = y[y == 1].index
+    legit_idx = y[y == 0].index
 
     n_fraud = min(len(fraud_idx), int(n_samples * 0.035))  # ~3.5% prevalence
     n_legit = n_samples - n_fraud
 
-    sampled_fraud = rng.choice(fraud_idx, size=n_fraud, replace=False)
-    sampled_legit = rng.choice(legit_idx, size=min(n_legit, len(legit_idx)), replace=False)
+    sampled_fraud = np.random.choice(fraud_idx, n_fraud, replace=False)
+    sampled_legit = np.random.choice(legit_idx, n_legit, replace=False)
     sampled_idx = np.concatenate([sampled_fraud, sampled_legit])
-    rng.shuffle(sampled_idx)
+    np.random.shuffle(sampled_idx)
 
-    X_sub = X.iloc[sampled_idx].values
-    y_sub = y[sampled_idx]
+    X_sub = X.loc[sampled_idx].reset_index(drop=True)
+    y_sub = y.loc[sampled_idx].reset_index(drop=True)
 
     # PCA projection to 5 components
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_sub)
-    pca = PCA(n_components=5, random_state=random_seed)
-    X_pca = pca.fit_transform(X_scaled)
-
-    # Map PCA components to synthetic feature names
-    result = pd.DataFrame({
-        'order_amount': _rescale(X_pca[:, 0], 100, 2000),
-        'fraud_score': _rescale(X_pca[:, 1], 0.0, 1.0),
-        'previous_refunds': np.clip(np.round(_rescale(X_pca[:, 2], 0, 10)), 0, 10).astype(int),
-        'delivery_delay': _rescale(X_pca[:, 3], 0, 90),
-        'complaint_severity': np.clip(np.round(_rescale(X_pca[:, 4], 1, 5)), 1, 5).astype(int),
-        'refunded': y_sub,
-    })
-
-    return result.reset_index(drop=True)
+    return _pca_project(X_sub, y_sub, n_components=5, random_state=random_state)
 
 
 def load_paysim(
     filepath: str,
     n_samples: int = 10000,
-    random_seed: int = 42,
+    random_state: int = 42,
 ) -> pd.DataFrame:
-    """Load and preprocess PaySim mobile money dataset.
+    """
+    Load and preprocess the PaySim mobile money dataset.
 
-    PaySim contains 6.3M transactions with 0.13% fraud prevalence.
-    Features are engineered and PCA-aligned with the synthetic space.
+    PaySim has extreme class imbalance (0.13% fraud). Features are
+    engineered and PCA-projected to align with the synthetic space.
 
     Args:
         filepath: Path to the PaySim CSV file.
-        n_samples: Number of stratified samples.
-        random_seed: Random seed.
+        n_samples: Number of samples to subsample (stratified).
+        random_state: Random seed for reproducibility.
 
     Returns:
-        DataFrame aligned with synthetic feature space.
+        DataFrame with columns: order_amount, fraud_score,
+        previous_refunds, delivery_delay, complaint_severity,
+        refunded (target).
     """
     df = pd.read_csv(filepath)
 
-    target_col = 'isFraud' if 'isFraud' in df.columns else 'is_fraud'
+    # PaySim column mapping
+    target_col = "isFraud"
 
-    # Engineer features from PaySim columns
-    feature_df = pd.DataFrame()
-    feature_df['amount'] = df['amount'] if 'amount' in df.columns else df.iloc[:, 1]
-    feature_df['oldbalanceOrg'] = df.get('oldbalanceOrg', 0)
-    feature_df['newbalanceOrig'] = df.get('newbalanceOrig', 0)
-    feature_df['oldbalanceDest'] = df.get('oldbalanceDest', 0)
-    feature_df['newbalanceDest'] = df.get('newbalanceDest', 0)
+    # Engineer features
+    features = pd.DataFrame()
+    features["amount"] = df["amount"]
+    features["balance_delta"] = (
+        df["newbalanceOrig"] - df["oldbalanceOrg"]
+    ).abs()
+    features["dest_balance_delta"] = (
+        df["newbalanceDest"] - df["oldbalanceDest"]
+    ).abs()
+    features["step"] = df["step"]
 
-    # Balance deltas
-    feature_df['balance_delta_org'] = feature_df['oldbalanceOrg'] - feature_df['newbalanceOrig']
-    feature_df['balance_delta_dest'] = feature_df['newbalanceDest'] - feature_df['oldbalanceDest']
+    # Encode transaction type
+    if "type" in df.columns:
+        type_dummies = pd.get_dummies(df["type"], prefix="type")
+        features = pd.concat([features, type_dummies], axis=1)
 
-    # Transaction type encoding
-    if 'type' in df.columns:
-        feature_df['type_encoded'] = df['type'].astype('category').cat.codes
-    if 'step' in df.columns:
-        feature_df['step'] = df['step']
+    y = df[target_col]
 
-    y = df[target_col].values
+    # Stratified subsample preserving fraud ratio
+    np.random.seed(random_state)
+    fraud_idx = y[y == 1].index
+    legit_idx = y[y == 0].index
 
-    # Stratified subsample
-    rng = np.random.RandomState(random_seed)
-    fraud_idx = np.where(y == 1)[0]
-    legit_idx = np.where(y == 0)[0]
-
-    n_fraud = min(len(fraud_idx), int(n_samples * 0.0013 * 10))  # Preserve rarity
+    n_fraud = min(len(fraud_idx), max(13, int(n_samples * 0.0013)))
     n_legit = n_samples - n_fraud
 
-    sampled_fraud = rng.choice(fraud_idx, size=min(n_fraud, len(fraud_idx)), replace=True)
-    sampled_legit = rng.choice(legit_idx, size=min(n_legit, len(legit_idx)), replace=False)
+    sampled_fraud = np.random.choice(
+        fraud_idx, n_fraud, replace=len(fraud_idx) < n_fraud
+    )
+    sampled_legit = np.random.choice(legit_idx, n_legit, replace=False)
     sampled_idx = np.concatenate([sampled_fraud, sampled_legit])
-    rng.shuffle(sampled_idx)
+    np.random.shuffle(sampled_idx)
 
-    X_sub = feature_df.iloc[sampled_idx].fillna(0).values
-    y_sub = y[sampled_idx]
+    X_sub = features.loc[sampled_idx].fillna(0).reset_index(drop=True)
+    y_sub = y.loc[sampled_idx].reset_index(drop=True)
 
-    # PCA projection to 5 components
+    return _pca_project(X_sub, y_sub, n_components=5, random_state=random_state)
+
+
+def _pca_project(
+    X: pd.DataFrame,
+    y: pd.Series,
+    n_components: int = 5,
+    random_state: int = 42,
+) -> pd.DataFrame:
+    """
+    Project features into a 5-dimensional PCA space aligned with
+    synthetic feature semantics.
+
+    The top 5 principal components are mapped to:
+        PC1 → order_amount (transaction value)
+        PC2 → fraud_score (fraud propensity)
+        PC3 → previous_refunds (behavioural history)
+        PC4 → delivery_delay (temporal delay)
+        PC5 → complaint_severity (complaint intensity)
+
+    Args:
+        X: Feature matrix.
+        y: Target labels.
+        n_components: Number of PCA components.
+        random_state: Random seed.
+
+    Returns:
+        DataFrame with synthetic-aligned feature names + target.
+    """
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X_sub)
-    n_components = min(5, X_scaled.shape[1])
-    pca = PCA(n_components=n_components, random_state=random_seed)
+    X_scaled = scaler.fit_transform(X)
+
+    pca = PCA(n_components=min(n_components, X_scaled.shape[1]),
+              random_state=random_state)
     X_pca = pca.fit_transform(X_scaled)
 
-    # Pad if fewer than 5 components
-    if X_pca.shape[1] < 5:
-        pad = np.zeros((X_pca.shape[0], 5 - X_pca.shape[1]))
+    # Pad if fewer components than requested
+    if X_pca.shape[1] < n_components:
+        pad = np.zeros((X_pca.shape[0], n_components - X_pca.shape[1]))
         X_pca = np.hstack([X_pca, pad])
 
-    result = pd.DataFrame({
-        'order_amount': _rescale(X_pca[:, 0], 100, 2000),
-        'fraud_score': _rescale(X_pca[:, 1], 0.0, 1.0),
-        'previous_refunds': np.clip(np.round(_rescale(X_pca[:, 2], 0, 10)), 0, 10).astype(int),
-        'delivery_delay': _rescale(X_pca[:, 3], 0, 90),
-        'complaint_severity': np.clip(np.round(_rescale(X_pca[:, 4], 1, 5)), 1, 5).astype(int),
-        'refunded': y_sub,
-    })
+    feature_names = [
+        "order_amount",
+        "fraud_score",
+        "previous_refunds",
+        "delivery_delay",
+        "complaint_severity",
+    ]
 
-    return result.reset_index(drop=True)
+    result = pd.DataFrame(X_pca[:, :5], columns=feature_names)
 
+    # Rescale to match synthetic feature ranges
+    from src.config import Config
+    config = Config()
+    for col in feature_names:
+        col_min, col_max = config.feature_ranges.get(col, (0, 1))
+        col_data = result[col]
+        if col_data.std() > 0:
+            result[col] = (
+                (col_data - col_data.min())
+                / (col_data.max() - col_data.min())
+                * (col_max - col_min)
+                + col_min
+            )
 
-def _rescale(arr: np.ndarray, new_min: float, new_max: float) -> np.ndarray:
-    """Min-max rescale array to [new_min, new_max]."""
-    old_min, old_max = arr.min(), arr.max()
-    if old_max == old_min:
-        return np.full_like(arr, (new_min + new_max) / 2)
-    return (arr - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
+    result["refunded"] = y.values
+
+    variance_explained = pca.explained_variance_ratio_.sum()
+    print(
+        f"PCA variance explained ({pca.n_components_} components): "
+        f"{variance_explained:.1%}"
+    )
+
+    return result

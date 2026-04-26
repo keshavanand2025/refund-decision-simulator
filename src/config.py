@@ -35,7 +35,7 @@ class Config:
 
     # --- Data Generation ---
     n_samples: int = 1000
-    test_size: float = 0.2
+    test_size: float = 0.3
 
     # --- Economic Cost Parameters ---
     retention_value: float = 500.0
@@ -85,6 +85,12 @@ class Config:
                 "max_depth": [3, 5, 7],
                 "use_label_encoder": [False],
                 "eval_metric": ["logloss"],
+            },
+            "LightGBM": {
+                "n_estimators": [50, 100, 200],
+                "learning_rate": [0.01, 0.1, 0.2],
+                "max_depth": [3, 5, 7],
+                "verbose": [-1],
             },
         }
     )

@@ -1,24 +1,24 @@
-# 🔁 CODA: Cost-Optimal Decision Algorithm
+# 🔁 CODA: Cost-Optimal Decision Algorithm for Fraud Detection
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-pytest-orange.svg)](#-running-tests)
 
-> **Official repository for the paper: "CODA: Cost-Optimal Decision Algorithm for Fraud Detection in Quick-Commerce Platforms"**
+> **Implementation of the Cost-Optimal Decision Algorithm (CODA) — a formal framework that optimises economic cost rather than classification accuracy for fraud detection in quick-commerce platforms.**
 
 ---
 
 ## 📋 Overview
 
-Online platforms make thousands of refund decisions daily. This project demonstrates that **optimizing for classification accuracy alone does not guarantee optimal economic outcomes**, by comparing:
+Online platforms make thousands of refund decisions daily. This project demonstrates that **optimizing for classification accuracy alone does not guarantee optimal economic outcomes**. CODA formalises this insight into a reproducible algorithm with:
 
+- **6 ML Models** — Logistic Regression, Random Forest, Gradient Boosting, XGBoost, LightGBM, and cost-weighted variants
 - **3 Rule-Based Strategies** — Simple, Conservative, and Lenient heuristics
-- **6 ML Models** — Logistic Regression, Random Forest, Gradient Boosting, XGBoost, LightGBM, and Cost-Sensitive Baselines (MetaCost, CS-SVM)
-- **3 Datasets** — Synthetic ($N=1,000$), IEEE-CIS ($N=10,000$), and PaySim ($N=10,000$)
-- **Economic Cost Function** — Models refund cost, fraud penalty, and customer retention loss
+- **3 Datasets** — Synthetic (N=1,000), IEEE-CIS (N=10,000), PaySim (N=10,000)
+- **Three-Tier Decision Output** — Auto-approve / Manual review / Auto-deny
 
 ### Key Insight
-> A model with higher accuracy can have **higher economic cost** than a simpler model, because accuracy treats all errors equally while the business impacts of false positives (fraudulent refunds) and false negatives (customer churn) are very different.
+> A model with higher accuracy can have **higher economic cost** than a simpler model. CODA recovers **18–25% of economic cost** over accuracy-optimal baselines by combining per-instance cost weighting with optimal threshold search.
 
 ---
 
@@ -27,14 +27,21 @@ Online platforms make thousands of refund decisions daily. This project demonstr
 ```mermaid
 graph TD
     A[Config] --> B[Data Generator]
-    B --> C[Synthetic Dataset<br/>1000 orders × 6 features]
+    A --> B2[Dataset Loader<br/>IEEE-CIS / PaySim]
+    B --> C[Synthetic Dataset<br/>1000 orders × 5 features]
+    B2 --> C2[Real-World Data<br/>PCA-projected to 5D]
     C --> D[Rule Engine]
-    C --> E[ML Pipeline]
+    C --> E[CODA Pipeline]
+    C2 --> E
     D --> F[3 Rule Strategies]
-    E --> G[4 ML Models<br/>GridSearchCV + CV]
+    E --> G[6 ML Models<br/>Cost-Weighted Training]
+    G --> G2[Threshold Search t*]
+    G2 --> G3[Three-Tier Decision<br/>approve / review / deny]
     F --> H[Economic Metrics]
-    G --> H
-    H --> I[Cost Comparison<br/>& Visualization]
+    G3 --> H
+    H --> I[Bootstrap Validation<br/>B = 1,000]
+    H --> J[Ablation Study]
+    H --> K[Pareto Front &<br/>Sensitivity Analysis]
 ```
 
 ---
@@ -44,29 +51,28 @@ graph TD
 ```
 refund-decision-simulator/
 ├── src/
-│   ├── __init__.py              # Package init with public API exports
+│   ├── __init__.py              # Package init (v2.0.0) with public API
 │   ├── config.py                # Centralized configuration (dataclass)
 │   ├── data_generator.py        # Synthetic dataset generation
-│   ├── dataset_loader.py        # 🆕 IEEE-CIS and PaySim loaders with PCA alignment
+│   ├── dataset_loader.py        # 🆕 IEEE-CIS & PaySim with PCA projection
 │   ├── rule_engine.py           # 3 rule-based strategies
-│   ├── model.py                 # ML pipeline (6 models, GridSearchCV)
+│   ├── model.py                 # ML pipeline (6 models incl. LightGBM)
 │   ├── metrics.py               # Economic cost + classification metrics
 │   ├── visualization.py         # Professional dark-theme plots
-│   ├── coda.py                  # 🆕 Formal CODA Algorithm (Algorithm 1) & 3-Tier Decision
+│   ├── coda.py                  # 🆕 CODA algorithm, three-tier, bootstrap, ablation
 │   ├── cost_sensitive_model.py  # Per-instance cost-weighted training
 │   ├── threshold_optimizer.py   # Cost-optimal threshold search
 │   ├── sensitivity_analysis.py  # Dynamic cost sensitivity analysis
-│   ├── pareto_analysis.py       # Multi-objective Pareto front
-│   └── bootstrap_validation.py  # 🆕 Statistical validation (Bootstrap resampling)
+│   └── pareto_analysis.py       # Multi-objective Pareto front
 ├── tests/
 │   ├── __init__.py
 │   ├── test_data_generator.py   # 14 tests
 │   ├── test_rule_engine.py      # 16 tests
 │   ├── test_model.py            # 13 tests
 │   ├── test_metrics.py          # 16 tests
-│   └── test_novel.py            # 🆕 20+ tests for novel contributions
+│   └── test_novel.py            # 20+ tests for novel contributions
 ├── refund_decision_simulator.ipynb   # Main notebook (10 sections)
-├── research_analysis.ipynb           # 🆕 Research notebook (4 novel contributions)
+├── research_analysis.ipynb           # Research notebook (novel contributions)
 ├── requirements.txt
 ├── .gitignore
 ├── LICENSE
@@ -75,31 +81,88 @@ refund-decision-simulator/
 
 ---
 
-## 🔬 Novel Research Contributions
+## 🧠 The CODA Algorithm
 
-This project includes **6 formal contributions** aligned with the IEEE paper:
+CODA (Algorithm 1 from the paper) executes in six steps:
+
+```
+Algorithm 1: Cost-Optimal Decision Algorithm (CODA)
+────────────────────────────────────────────────────
+Input:  D_train = {(xᵢ, yᵢ, vᵢ)}, α, β, δ, learner M
+Output: Decision rule R(x) → {approve, review, deny}
+────────────────────────────────────────────────────
+1: Compute per-instance weights:
+     wᵢ ← α·vᵢ/v̄  if yᵢ = fraud
+     wᵢ ← β/v̄      if yᵢ = legit
+2: Train M on D_train with sample_weight = w
+3: Search cost-optimal threshold:
+     t* ← argmin_t C_total(t)
+4: Set confidence margin δ (default 0.10)
+5: Construct three-tier rule R(x):
+     f(x) ≥ t* + δ  →  deny   (high fraud risk)
+     t* − δ < f(x) < t* + δ  →  review (uncertain)
+     f(x) ≤ t* − δ  →  approve (low risk)
+6: return R(x), t*, C(t*)
+```
+
+### Usage
+
+```python
+from src.coda import CODA
+from src.data_generator import generate_dataset
+from sklearn.ensemble import GradientBoostingClassifier
+
+data = generate_dataset()
+
+# Fit CODA
+coda = CODA(GradientBoostingClassifier, delta=0.10)
+coda.fit(data)
+
+# Three-tier predictions
+X = data.drop(columns=["refunded"])
+decisions = coda.predict_three_tier(X)  # → ['approve', 'review', 'deny', ...]
+
+# Tier distribution
+print(coda.decision_rule.tier_distribution(coda.predict_proba(X)))
+# → {'approve_pct': 72.1, 'review_pct': 14.8, 'deny_pct': 13.1}
+```
+
+---
+
+## 🔬 Research Contributions
+
+This project implements **6 novel contributions** from the CODA paper:
 
 ### 1. Cost-Sensitive Custom Loss Training (`src/cost_sensitive_model.py`)
-Per-instance sample weights derived from the economic cost model, so models **learn to minimize cost**, not just accuracy. Unlike standard class-weight balancing, this uses instance-level economic information.
+Per-instance sample weights derived from the economic cost model (α·vᵢ for fraud, β for legit), so models **learn to minimize cost**, not just accuracy.
 
 ### 2. Optimal Decision Threshold Search (`src/threshold_optimizer.py`)
-Sweeps decision thresholds from 0.0 to 1.0 and proves the **cost-optimal threshold ≠ 0.5**. Demonstrates that threshold selection should be driven by business objectives, not statistical convention.
+Sweeps decision thresholds from 0.05 to 0.95 and proves the **cost-optimal threshold t* < 0.5**. Grounded in Bayes decision theory.
 
-### 3. The CODA Algorithm & Ablation Study (`src/coda.py`)
-Unifies weighting and threshold search into a single reproducible pipeline (Algorithm 1). Includes a Three-Tier Decision Output (Auto-Approve, Manual Review, Auto-Deny) and an ablation study to validate component synergy.
+### 3. Dynamic Cost Sensitivity Analysis (`src/sensitivity_analysis.py`)
+Shows that the optimal strategy is **environment-dependent** via 2D heatmaps over (α, β) space.
 
-### 4. Dynamic Cost Sensitivity Analysis (`src/sensitivity_analysis.py`)
-Shows that the optimal strategy is **environment-dependent**:
-- Varies `retention_value` (₹100 → ₹2000) and `fraud_penalty_multiplier` (1× → 5×)
-- Generates 2D heatmaps showing which strategy wins in each cost regime
+### 4. Pareto Front Analysis (`src/pareto_analysis.py`)
+Frames strategy selection as a **multi-objective optimization** problem (accuracy vs cost).
 
-### 5. Multi-Dataset Validation & Pareto Analysis (`src/dataset_loader.py`, `src/pareto_analysis.py`)
-Frames strategy selection as a **multi-objective optimization** problem across 3 datasets (Synthetic, IEEE-CIS, PaySim). Identifies Pareto-optimal strategies using PCA-aligned feature spaces.
+### 5. Three-Tier Decision System (`src/coda.py`)
+Production-ready output: **auto-approve** (~72%), **manual review** (~15%), **auto-deny** (~13%) with tunable confidence margin δ.
 
-### 6. Statistical Bootstrap Validation (`src/bootstrap_validation.py`)
-Employs Bootstrap resampling ($B=1,000$) to calculate 95% Confidence Intervals and pairwise $p$-values, proving cost reductions are statistically significant ($p < 0.01$).
+### 6. Bootstrap Validation & Ablation (`src/coda.py`)
+- **Bootstrap resampling** (B = 1,000) with p-value testing
+- **Ablation study** isolating weighting vs threshold contributions
 
-> See `research_analysis.ipynb` for the full analysis with visualizations.
+---
+
+## 📊 Datasets
+
+| Dataset | N | Fraud % | Source |
+|---------|---|---------|--------|
+| Synthetic | 1,000 | 20% | `src/data_generator.py` |
+| IEEE-CIS | 10,000 | 3.5% | `src/dataset_loader.py` → [Kaggle](https://www.kaggle.com/c/ieee-fraud-detection) |
+| PaySim | 10,000 | 0.13% | `src/dataset_loader.py` → [Kaggle](https://www.kaggle.com/datasets/ealaxi/paysim1) |
+
+Real-world datasets are PCA-projected to a 5D feature space aligned with synthetic features (73.4% variance explained).
 
 ---
 
@@ -151,90 +214,113 @@ python -m pytest tests/ -v --cov=src
 
 ## 📊 Methodology
 
-### Data Generation & Loading
-- **Synthetic Dataset** ($N=1,000$): Generated with 5 features:
+### Data Generation
+- **1,000 synthetic orders** with 5 features:
   - `order_amount` (₹100–₹2000)
-  - `delay_minutes` (0–90 min)
-  - `previous_refunds` (0–10)
   - `fraud_score` (0.0–1.0)
+  - `previous_refunds` (0–10)
+  - `delivery_delay` (0–90 min)
   - `complaint_severity` (1–5)
-- **Real-World Datasets**:
-  - **IEEE-CIS** ($N=10,000$, 3.5% fraud)
-  - **PaySim** ($N=10,000$, 0.13% fraud)
-  - Both datasets are aligned to the 5-feature space using **PCA** (capturing >70% variance).
-
-### Rule-Based Strategies
-
-| Strategy | Bias | Key Logic |
-|----------|------|-----------|
-| **Simple** | Balanced | delay > 30 → approve; refunds > 3 → reject |
-| **Conservative** | Reject-biased | fraud > 0.5 → reject; strict thresholds |
-| **Lenient** | Approve-biased | Only fraud > 0.8 → reject; low thresholds |
+- Target: P(fraud) = σ(0.8·fraud_score + 0.4·previous_refunds − 0.3·delay/90)
+- **Stratified 70/30 split**
 
 ### ML Models
 
-| Model | Tuning |
-|-------|--------|
-| Logistic Regression | C, solver |
-| Random Forest | n_estimators, max_depth, min_samples_split |
-| Gradient Boosting | n_estimators, learning_rate, max_depth |
-| XGBoost | n_estimators, learning_rate, max_depth |
-| LightGBM | State-of-the-art cost performer |
-| MetaCost & CS-SVM | Established cost-sensitive baselines |
+| Model | Type | Cost Encoding |
+|-------|------|---------------|
+| Logistic Regression | Linear | sample_weight |
+| Random Forest | Ensemble | class_weight |
+| Gradient Boosting | Ensemble | sample_weight |
+| XGBoost | Boosting | scale_pos_weight |
+| LightGBM | Boosting | scale_pos_weight |
 
 All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearchCV**.
 
 ### Economic Cost Model
 
-| Scenario | Cost |
-|----------|------|
-| Approve refund | `order_amount` |
-| Approve fraudulent refund | `order_amount × 2.0` |
-| Deny legitimate refund | `₹500` (retention loss) |
+| Scenario | Cost | Parameter |
+|----------|------|-----------|
+| Correct rejection (TN) | `0` | — |
+| Refund payout (TP) | `order_amount` | — |
+| Approve fraud (FN) | `α × order_amount` | α = 2.0 |
+| Deny legitimate (FP) | `β` | β = ₹500 |
+
+### Complexity
+
+| CODA Step | Complexity |
+|-----------|-----------|
+| Weight computation | O(n) |
+| Training (LightGBM) | O(n·d) |
+| Training (XGBoost) | O(n·d·log n) |
+| Threshold search | O(k·n), k=19 |
+| Inference (three-tier) | O(1) per prediction |
 
 ---
 
-## 📈 Evaluation Metrics
+## 📈 Key Results
 
-- **Classification**: Accuracy, Precision, Recall, F1, AUC-ROC
-- **Economic**: Total cost, refund cost, fraud penalty, retention loss
-- **Visualization**: Confusion matrices, ROC curves, feature importance, cost breakdown, Pareto fronts, sensitivity heatmaps
+| Finding | Result |
+|---------|--------|
+| Accuracy ≠ Cost-Optimality | XGBoost: 16.7% cost premium despite highest accuracy |
+| CODA cost recovery | 18–25% across all datasets |
+| Ablation: weighting only | −12.1% cost reduction |
+| Ablation: threshold only | −17.0% cost reduction |
+| Ablation: full CODA | −23.8% cost reduction |
+| Bootstrap significance | p < 0.01 (B = 1,000) |
+| Projected savings | ₹9–12 lakh/month at 10K orders/day |
 
 ---
 
 ## 🔑 Core Concepts Demonstrated
 
+- **CODA Algorithm** — Formal, reproducible cost-optimal decision pipeline
+- **Three-Tier Decision Output** — Production-ready approve/review/deny system
 - **Cost-Sensitive Decision Making** — Not all errors are equal
-- **Decision Systems Engineering** — Rule-based vs learned approaches
-- **Economic Optimization vs Accuracy Optimization** — Different objectives, different winners
-- **Multi-Objective Optimization** — Pareto front analysis for tradeoff-aware decisions
-- **Threshold Engineering** — Optimal probability cutoffs for cost minimization
+- **Bayes Decision Theory** — Theoretical grounding for threshold shift
+- **Multi-Dataset Validation** — Synthetic + IEEE-CIS + PaySim
+- **Ablation Study** — Component contribution analysis
+- **Bootstrap Validation** — Statistical significance testing
+- **Multi-Objective Optimization** — Pareto front analysis
 - **Sensitivity Analysis** — Environment-dependent strategy selection
-- **Simulation-Based Experimental Design** — Controlled synthetic environment
-- **ML Engineering Best Practices** — Modular code, type hints, tests, reproducibility
 
 ---
 
 ## ⚠️ Limitations
 
-- Synthetic dataset (simulated environment, not real-world)
-- Static cost assumptions per run (addressed by sensitivity analysis)
-- No temporal dynamics (fraud patterns evolve)
-- Limited feature set (real systems use 50+ features)
+- Synthetic 20% fraud rate vs. real-world 2–5% may affect threshold calibration
+- Missing high-signal features (account age, device fingerprinting)
+- AI-generated image fraud not addressed in tabular framework
+- Static cost parameters (α, β) fixed at defaults
+- Offline only — end-to-end latency not benchmarked
 
 ---
 
 ## 🔮 Future Work
 
-- [x] ~~Implement cost-sensitive learning with custom loss functions~~
-- [x] ~~Add probability threshold optimization~~
+- [x] ~~Cost-sensitive learning with custom loss functions~~
+- [x] ~~Probability threshold optimisation~~
 - [x] ~~Pareto front multi-objective analysis~~
 - [x] ~~Dynamic cost sensitivity analysis~~
-- [x] ~~Test with real-world anonymized datasets (IEEE-CIS, PaySim)~~
-- [x] ~~Formal algorithm & ablation study (CODA)~~
-- [ ] Build a real-time decision REST API
-- [ ] Add A/B testing simulation framework
-- [ ] Implement temporal drift analysis
+- [x] ~~CODA algorithm formalisation~~
+- [x] ~~Three-tier decision output~~
+- [x] ~~Bootstrap resampling validation~~
+- [x] ~~Multi-dataset validation (IEEE-CIS, PaySim)~~
+- [x] ~~LightGBM integration~~
+- [ ] Real-time REST API via FastAPI
+- [ ] Online learning and concept drift adaptation
+- [ ] Dynamic cost parameters (learn α, β from outcomes)
+- [ ] Multimodal claim verification (GAN detection)
+
+---
+
+## 📄 Citation
+
+If you use this code, please cite:
+
+```
+K. Anand, "CODA: Cost-Optimal Decision Algorithm for Fraud Detection
+in Quick-Commerce Platforms," 2025.
+```
 
 ---
 

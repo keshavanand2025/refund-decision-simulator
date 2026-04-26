@@ -41,6 +41,12 @@ try:
 except ImportError:
     _XGBOOST_AVAILABLE = False
 
+try:
+    from lightgbm import LGBMClassifier
+    _LIGHTGBM_AVAILABLE = True
+except ImportError:
+    _LIGHTGBM_AVAILABLE = False
+
 from src.config import Config
 
 
@@ -128,6 +134,9 @@ class CostSensitivePipeline:
 
     if _XGBOOST_AVAILABLE:
         MODEL_CLASSES["XGBoost"] = XGBClassifier
+
+    if _LIGHTGBM_AVAILABLE:
+        MODEL_CLASSES["LightGBM"] = LGBMClassifier
 
     def __init__(self, config: Optional[Config] = None) -> None:
         self.config = config or Config()
