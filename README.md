@@ -30,7 +30,7 @@ graph TD
     A[Config] --> B[Data Generator]
     A --> B2[Dataset Loader<br/>IEEE-CIS / PaySim]
     B --> C[Synthetic Dataset<br/>1000 orders × 5 features]
-    B2 --> C2[Real-World Data<br/>PCA-projected to 5D]
+    B2 --> C2[Real-World Data<br/>IEEE-CIS 590K / PaySim 10K]
     C --> D[Rule Engine]
     C --> E[CODA Pipeline]
     C2 --> E
@@ -55,12 +55,12 @@ refund-decision-simulator/
 │   ├── __init__.py              # Package init (v2.0.0) with public API
 │   ├── config.py                # Centralized configuration (dataclass)
 │   ├── data_generator.py        # Synthetic dataset generation
-│   ├── dataset_loader.py        # 🆕 IEEE-CIS & PaySim with PCA projection
+│   ├── dataset_loader.py        # IEEE-CIS (590K full scale) & PaySim loader
 │   ├── rule_engine.py           # 3 rule-based strategies
 │   ├── model.py                 # ML pipeline (6 models incl. LightGBM)
 │   ├── metrics.py               # Economic cost + classification metrics
 │   ├── visualization.py         # Professional dark-theme plots
-│   ├── coda.py                  # 🆕 CODA algorithm, three-tier, bootstrap, ablation
+│   ├── coda.py                  # CODA & CODA+ algorithms, three-tier, bootstrap, ablation
 │   ├── cost_sensitive_model.py  # Per-instance cost-weighted training
 │   ├── threshold_optimizer.py   # Cost-optimal threshold search
 │   ├── sensitivity_analysis.py  # Dynamic cost sensitivity analysis
@@ -132,7 +132,7 @@ print(coda.decision_rule.tier_distribution(coda.predict_proba(X)))
 
 ## 🔬 Research Contributions
 
-This project implements **6 novel contributions** from the CODA paper:
+This project implements **8 novel contributions** from the CODA/CODA+ paper:
 
 ### 1. Cost-Sensitive Custom Loss Training (`src/cost_sensitive_model.py`)
 Per-instance sample weights derived from the economic cost model (α·vᵢ for fraud, β for legit), so models **learn to minimize cost**, not just accuracy.
@@ -152,6 +152,12 @@ Production-ready output: **auto-approve** (~72%), **manual review** (~15%), **au
 ### 6. Bootstrap Validation & Ablation (`src/coda.py`)
 - **Bootstrap resampling** (B = 1,000) with p-value testing
 - **Ablation study** isolating weighting vs threshold contributions
+
+### 7. CODA+ Dynamic Cost Learning (`src/coda.py`)
+Instance-adaptive cost functions α(x) and β(x) via Ridge regression. Replaces static global costs with **per-transaction Bayes-optimal thresholds** t*(xᵢ) = β(xᵢ) / (α(xᵢ)·vᵢ + β(xᵢ)).
+
+### 8. CHL-LightGBM Baseline Comparison
+Direct comparison with Zhao et al. (2024) CHL-LightGBM. Demonstrates that **highest AUC ≠ lowest cost** — CHL is miscalibrated (Brier = 0.095) and economically suboptimal.
 
 ---
 
@@ -229,11 +235,13 @@ python -m pytest tests/ -v --cov=src
 
 | Model | Type | Cost Encoding |
 |-------|------|---------------|
-| Logistic Regression | Linear | sample_weight |
 | Random Forest | Ensemble | class_weight |
 | Gradient Boosting | Ensemble | sample_weight |
 | XGBoost | Boosting | scale_pos_weight |
 | LightGBM | Boosting | scale_pos_weight |
+| CHL-LightGBM | Boosting | scale_pos_weight + class balance |
+| MetaCost | Wrapper | resampling |
+| CS-SVM | Algorithm | C⁺/C⁻ penalties |
 
 All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearchCV**.
 
@@ -331,8 +339,8 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 If you use this code, please cite:
 
 ```
-K. Anand, "CODA: Cost-Optimal Decision Algorithm for Fraud Detection
-in Quick-Commerce Platforms," 2025.
+K. Anand, "CODA: A Cost-Sensitive Decision Framework for
+Economic Optimisation in Fraud Detection," 2025.
 ```
 
 ---
