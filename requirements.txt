@@ -1,4 +1,4 @@
-numpy==1.26.4
+numpy==2.4.4
 pandas==2.2.1
 scikit-learn==1.6.1
 xgboost==2.0.3
