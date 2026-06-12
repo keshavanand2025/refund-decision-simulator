@@ -83,7 +83,6 @@ class Config:
                 "n_estimators": [50, 100, 200],
                 "learning_rate": [0.01, 0.1, 0.2],
                 "max_depth": [3, 5, 7],
-                "use_label_encoder": [False],
                 "eval_metric": ["logloss"],
             },
             "LightGBM": {
