@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-pytest-orange.svg)](#-running-tests)
+[![CI](https://github.com/keshavanand2025/refund-decision-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/keshavanand2025/refund-decision-simulator/actions/workflows/ci.yml)
 
 > **Implementation of the Cost-Optimal Decision Algorithm (CODA) — a formal framework that optimises economic cost rather than classification accuracy for fraud detection in quick-commerce platforms.**
 
@@ -51,6 +51,10 @@ graph TD
 
 ```
 refund-decision-simulator/
+├── .github/
+│   ├── dependabot.yml           # Automated dependency update PRs
+│   └── workflows/
+│       └── ci.yml               # CI: pytest on Python 3.10 / 3.11 / 3.12
 ├── src/
 │   ├── __init__.py              # Package init (v2.0.0) with public API
 │   ├── config.py                # Centralized configuration (dataclass)
@@ -65,16 +69,19 @@ refund-decision-simulator/
 │   ├── threshold_optimizer.py   # Cost-optimal threshold search
 │   ├── sensitivity_analysis.py  # Dynamic cost sensitivity analysis
 │   └── pareto_analysis.py       # Multi-objective Pareto front
-├── tests/
+├── tests/                       # 77 tests total
 │   ├── __init__.py
 │   ├── test_data_generator.py   # 14 tests
-│   ├── test_rule_engine.py      # 16 tests
+│   ├── test_rule_engine.py      # 20 tests
 │   ├── test_model.py            # 13 tests
-│   ├── test_metrics.py          # 16 tests
-│   └── test_novel.py            # 20+ tests for novel contributions
+│   ├── test_metrics.py          # 12 tests
+│   └── test_novel.py            # 18 tests for novel contributions
 ├── refund_decision_simulator.ipynb   # Main notebook (10 sections)
 ├── research_analysis.ipynb           # Research notebook (novel contributions)
-├── requirements.txt
+├── experiments_output.txt            # Captured experiment results
+├── pyproject.toml               # Package metadata (pip install -e .)
+├── requirements.txt             # Pinned versions for reproducibility
+├── SECURITY.md                  # Security policy & reporting
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -191,8 +198,11 @@ python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 
-# Install dependencies
+# Install dependencies (pinned versions, reproducible)
 pip install -r requirements.txt
+
+# Or install as an editable package (pulls dependencies from pyproject.toml)
+pip install -e .
 ```
 
 ### Running the Notebooks
@@ -223,12 +233,20 @@ python -m pytest tests/ -v --cov=src
 
 ### Data Generation
 - **1,000 synthetic orders** with 5 features:
-  - `order_amount` (₹100–₹2000)
-  - `fraud_score` (0.0–1.0)
-  - `previous_refunds` (0–10)
-  - `delivery_delay` (0–90 min)
-  - `complaint_severity` (1–5)
-- Target: P(fraud) = σ(0.8·fraud_score + 0.4·previous_refunds − 0.3·delay/90)
+  - `order_amount` (₹100–₹2000, uniform)
+  - `fraud_score` (0.0–1.0, uniform)
+  - `previous_refunds` (0–4, integer)
+  - `delay_minutes` (0–89, integer)
+  - `complaint_severity` (1–5, integer)
+- Target label (`refunded`) is sampled probabilistically using threshold indicators:
+
+  ```
+  logit = 0.3·𝟙[delay_minutes > 30] + 0.4·𝟙[complaint_severity > 3] − 0.5·𝟙[fraud_score > 0.7]
+  P(refunded) = σ(logit)
+  refunded ~ Bernoulli(P(refunded))
+  ```
+
+  where 𝟙[·] is the indicator function (see `src/data_generator.py` and `Config.label_weights`)
 - **Stratified 70/30 split**
 
 ### ML Models
