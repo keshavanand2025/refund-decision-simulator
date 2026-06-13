@@ -170,11 +170,11 @@ Direct comparison with Zhao et al. (2024) CHL-LightGBM. Demonstrates that **high
 
 ## 📊 Datasets
 
-| Dataset | N | Fraud % | Source |
+| Dataset | N | Positive Rate | Source |
 |---------|---|---------|--------|
-| Synthetic | 1,000 | 20% (elevated for stress testing) | `src/data_generator.py` |
-| IEEE-CIS | **590,540** (full scale) | 3.50% | [Kaggle](https://www.kaggle.com/c/ieee-fraud-detection) |
-| PaySim | 10,000 (subsample) | 0.13% | [Kaggle](https://www.kaggle.com/datasets/ealaxi/paysim1) |
+| Synthetic | 1,000 | ~54% refund-approved (by design; label = `refunded`, not fraud) | `src/data_generator.py` |
+| IEEE-CIS | **590,540** (full scale) | 3.50% fraud | [Kaggle](https://www.kaggle.com/c/ieee-fraud-detection) |
+| PaySim | 10,000 (subsample) | 0.13% fraud | [Kaggle](https://www.kaggle.com/datasets/ealaxi/paysim1) |
 
 IEEE-CIS is used at **full scale (590K)** with 194 numeric features and **no PCA projection** — this is the primary benchmark. PaySim uses a 10K stratified subsample to balance tractability with sufficient fraud-class representation.
 
@@ -238,15 +238,15 @@ python -m pytest tests/ -v --cov=src
   - `previous_refunds` (0–4, integer)
   - `delay_minutes` (0–89, integer)
   - `complaint_severity` (1–5, integer)
-- Target label (`refunded`) is sampled probabilistically using threshold indicators:
+- Target label (`refunded` = 1 means refund was approved, 0 means denied). Generated probabilistically via threshold indicators:
 
   ```
   logit = 0.3·𝟙[delay_minutes > 30] + 0.4·𝟙[complaint_severity > 3] − 0.5·𝟙[fraud_score > 0.7]
-  P(refunded) = σ(logit)
-  refunded ~ Bernoulli(P(refunded))
+  P(refunded=1) = σ(logit)    # σ = sigmoid
+  refunded ~ Bernoulli(P(refunded=1))
   ```
 
-  where 𝟙[·] is the indicator function (see `src/data_generator.py` and `Config.label_weights`)
+  where 𝟙[·] is the indicator function. The negative coefficient on `fraud_score` reflects that high-fraud-score orders are less likely to be approved for refund (see `src/data_generator.py` and `Config.label_weights`). Expected positive rate ≈ 54%.
 - **Stratified 70/30 split**
 
 ### ML Models
@@ -318,7 +318,7 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 
 ## ⚠️ Limitations
 
-- Synthetic dataset uses 20% fraud prevalence (elevated vs. real-world 2–5%) — serves as controlled stress test only
+- Synthetic dataset models refund-approval probability (not raw fraud prevalence); the ~54% positive rate is a product of the label generation formula, not a calibrated real-world fraud rate
 - PaySim uses 10K subsample from 6.3M transactions; full-scale evaluation is future work
 - CODA+ cost regressors use feature-derived proxies, not observed business outcomes
 - Linear Ridge models for α(x)/β(x) — R²=0.77 for β(x) leaves room for nonlinear models
