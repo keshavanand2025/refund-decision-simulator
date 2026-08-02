@@ -1,4 +1,5 @@
-# 🔁 CODA: Cost-Optimal Decision Algorithm for Fraud Detection
+#> **⚠️ Notice (July 2026):** The headline results below — including the +25.5% CODA+ cost reduction — were found to be self-scoring artifacts and do not reproduce under a common external cost metric. Under a fair comparison, CODA+ does not beat the csboost baseline. See the audit paper *"Re-Scoring Self-Scored Methods: A Pre-Registered Audit of Learned Cost-Sensitive Fraud Detection"* (submitted to IEEE ICDM 2026). Code and results below are preserved unmodified for the audit record.
+🔁 CODA: Cost-Optimal Decision Algorithm for Fraud Detection
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -10,7 +11,7 @@
 
 ## 📋 Overview
 
-Online platforms make thousands of refund decisions daily. This project demonstrates that **optimizing for classification accuracy alone does not guarantee optimal economic outcomes**. CODA formalises this insight into a reproducible algorithm with:
+Online platforms make thousands of refund decisions daily. This project demonstrates that ** optimising for classification accuracy alone does not guarantee optimal economic outcomes**. CODA formalises this insight into a reproducible algorithm with:
 
 - **6 ML Models + CHL-LightGBM baseline** — XGBoost, LightGBM, Gradient Boosting, Random Forest, MetaCost, CS-SVM
 - **3 Rule-Based Strategies** — Simple, Conservative, and Lenient heuristics
