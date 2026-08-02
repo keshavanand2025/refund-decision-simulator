@@ -1,3 +1,5 @@
+> **⚠️ Notice (August 2026):** The headline results below — including the +25.5% CODA+ cost reduction — were found to be self-scoring artifacts and do not reproduce under a common external cost metric. Under a fair comparison, CODA+ does not beat the csboost baseline. See the audit paper *"Re-Scoring Self-Scored Methods: A Pre-Registered Audit of Learned Cost-Sensitive Fraud Detection"* (submitted to IEEE ICDM 2026; under review). Code and results below are preserved unmodified for the audit record.
+
 # 🔁 CODA: Cost-Optimal Decision Algorithm for Fraud Detection
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
