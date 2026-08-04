@@ -184,11 +184,13 @@ Tier proportions depend entirely on the dataset and δ; on the default synthetic
 ### 7. CODA+ Dynamic Cost Learning (`src/coda.py`)
 Instance-adaptive cost functions α(x) and β(x) via Ridge regression. Replaces static global costs with **per-transaction Bayes-optimal thresholds** t*(xᵢ) = β(xᵢ) / (α(xᵢ)·vᵢ + β(xᵢ)).
 
-> **⚠️ Retracted — the learned cost functions are degenerate.** The audit found α̂ = 2v *exactly*
-> (R² = 1.000, MAE = 0.000): the regressor recovers the constant multiplier it was constructed from,
-> so the reported "R² = 1.0 held-out validation" is a **tautology, not a quality signal**. The audit
-> further reports β̂ ≡ 500 constant (CV = 0). Because CODA+ then scores itself on these self-generated
-> costs, the resulting gains do not reproduce under a common external cost.
+> **⚠️ Retracted — the learned cost functions are degenerate.** Direct inspection of the audit
+> harness cost files shows α̂ = 2v *exactly* (R² = 1.000, MAE = 0.000; e.g. max α on European Credit
+> Card is 51,382.41 = 2 × 25,691.16) and β̂ = 500.0 in every row across both datasets (CV = 0) — a
+> constant, not a learned function. The reported "R² = 1.0 held-out validation" is therefore a
+> **tautology, not a quality signal**: the regressor recovers the constant it was constructed from.
+> Because CODA+ then scores itself on these self-generated costs, the resulting gains do not
+> reproduce under a common external cost.
 
 ### 8. CHL-LightGBM Baseline Comparison
 Direct comparison with Zhao et al. (2024) CHL-LightGBM. Demonstrates that **highest AUC ≠ lowest cost** — CHL is miscalibrated (Brier = 0.095) and economically suboptimal.
@@ -373,10 +375,11 @@ learned per-instance cost functions (CODA+) is not what produced the reported ga
 - Synthetic dataset models refund-approval probability (not raw fraud prevalence); the ~54% positive rate is a product of the label generation formula, not a calibrated real-world fraud rate
 - PaySim uses 10K subsample from 6.3M transactions; full-scale evaluation is future work
 - CODA+ cost regressors use feature-derived proxies, not observed business outcomes
-- **CODA+ cost regressors are degenerate.** α̂ = 2v exactly (R² = 1.000, MAE = 0.000) — the regressor
-  merely recovers the constant multiplier it was constructed from, so the reported R² is a tautology
-  rather than evidence of fit quality. The audit additionally reports β̂ ≡ 500 constant (CV = 0).
-  Reported CODA+ gains are a self-scoring artifact and do not reproduce under a common external cost
+- **CODA+ cost regressors are degenerate.** α̂ = 2v exactly (R² = 1.000, MAE = 0.000) and β̂ = 500.0
+  in every row across both datasets (CV = 0) — a constant, not a learned function. The regressor
+  merely recovers the constants it was constructed from, so the reported R² is a tautology rather
+  than evidence of fit quality. Reported CODA+ gains are a self-scoring artifact and do not
+  reproduce under a common external cost
 - **Headline cost-reduction results are retracted** — see the notice at the top of this file and the
   status column in Key Results. Under a common metric (FN = amount, FP = 50), CODA+ is 3.3% worse
   than the csboost baseline on IEEE-CIS

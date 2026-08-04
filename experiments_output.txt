@@ -16,6 +16,8 @@
 #     is a TAUTOLOGY: alpha-hat = 2v exactly, i.e. the regressor
 #     recovers the constant it was constructed from. It is not
 #     evidence of fit quality.
+#   * All beta figures                       (lines ~50, ~53-56) --
+#     stale; see the note below on this file predating the audit.
 #
 # Under a single common external cost (FN = amount, FP = 50):
 #   CODA+ is 3.3% WORSE than the Hoeppner csboost baseline on
@@ -27,10 +29,23 @@
 # IEEE-CIS). Brier/calibration numbers below are metric-
 # independent and remain valid.
 #
-# NOTE ON TEST SPLIT: this run used test_size=0.3, giving
-# Test: 177,162 (line ~6). The audit evaluates on 118,109
-# (test_size=0.2). These are NOT the same test set - figures here
-# are not directly comparable to audit figures.
+# THIS FILE PREDATES THE AUDIT AND IS STALE.
+# It was produced under an older 70/30 configuration
+# (test_size=0.3), which is why its split reads
+# Train: 413,378 / Test: 177,162 (line ~6). The audit evaluates on
+# a test set of 118,109 for IEEE-CIS and 56,597 for European
+# Credit Card. It also used a different cost configuration.
+# Figures here are therefore NOT comparable to audit figures.
+#
+# In particular, THE BETA FIGURES IN THIS FILE DO NOT DESCRIBE THE
+# AUDITED ARTIFACTS. Lines ~50 and ~53-56 report a varying beta
+# (R2 = 0.7571, MAE = 157.15, range [100.00, 29444.60]). That is an
+# artifact of the old configuration. Direct inspection of the audit
+# harness cost files shows beta = 500.0 exactly in every row across
+# both datasets (CV = 0) - a constant, not a learned function.
+# The alpha degeneracy is confirmed in the audited artifacts as
+# well: alpha = 2v exactly, e.g. max alpha on European Credit Card
+# is 51,382.41 = 2 x 25,691.16.
 #
 # See: "Re-Scoring Self-Scored Methods: A Pre-Registered Audit of
 # Learned Cost-Sensitive Fraud Detection" (submitted to IEEE ICDM
