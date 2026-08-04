@@ -1,3 +1,42 @@
+################################################################
+# RETRACTED OUTPUT - PRESERVED FOR THE AUDIT RECORD. DO NOT CITE.
+################################################################
+#
+# This is the raw log of the ORIGINAL, SELF-SCORING experiment run.
+# CODA/CODA+ were scored on the cost function they generated
+# themselves, while baselines were scored on a different one.
+# It is kept unmodified so the audit can be reproduced against it.
+#
+# Specifically NOT valid in this file:
+#   * "CODA+ vs XGBoost baseline: +25.5%"   (line ~63, ~144)
+#   * "CODA+ vs static CODA: +22.3%"        (line ~62)
+#   * "CODA dominates CHL? True"            (line ~44)
+#   * CHL-LightGBM economic delta -22.1%    (line ~141)
+#   * "Alpha regressor R2: 1.0000"          (lines ~49-52) -- this
+#     is a TAUTOLOGY: alpha-hat = 2v exactly, i.e. the regressor
+#     recovers the constant it was constructed from. It is not
+#     evidence of fit quality.
+#
+# Under a single common external cost (FN = amount, FP = 50):
+#   CODA+ is 3.3% WORSE than the Hoeppner csboost baseline on
+#   IEEE-CIS (delta cost +12,900, p_Holm = 0.031), and worse on
+#   European Credit Card (+22,147, p_Holm = 0.0025).
+#
+# What survives: cost-sensitive thresholding beats accuracy-
+# optimised models (csboost 0.357 vs cost-insensitive 0.262 on
+# IEEE-CIS). Brier/calibration numbers below are metric-
+# independent and remain valid.
+#
+# NOTE ON TEST SPLIT: this run used test_size=0.3, giving
+# Test: 177,162 (line ~6). The audit evaluates on 118,109
+# (test_size=0.2). These are NOT the same test set - figures here
+# are not directly comparable to audit figures.
+#
+# See: "Re-Scoring Self-Scored Methods: A Pre-Registered Audit of
+# Learned Cost-Sensitive Fraud Detection" (submitted to IEEE ICDM
+# 2026; under review).
+################################################################
+
 ============================================================
 LOADING IEEE-CIS (full scale)
 Loaded: 590,540 rows, 394 columns, 27.3s

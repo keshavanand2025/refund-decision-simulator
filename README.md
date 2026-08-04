@@ -23,6 +23,12 @@ Online platforms make thousands of refund decisions daily. This project demonstr
 ### Key Insight
 > A model with higher accuracy can have **higher economic cost** than a simpler model. CODA+ achieves **25.5% cost reduction** on full-scale IEEE-CIS (590K transactions). CHL-LightGBM has the best AUC (0.919) but the **worst economic cost** (+22.1%) due to calibration failure.
 
+> **⚠️ Retracted.** The 25.5% figure above is a self-scoring artifact (see notice at top); under a
+> common external cost CODA+ does not beat the csboost baseline. The CHL-LightGBM economic
+> comparison was never re-verified under the common metric and should not be cited. The claim that
+> survives is the general one: **cost-sensitive thresholding beats accuracy-optimised models**
+> (csboost 0.357 vs cost-insensitive 0.262 on IEEE-CIS).
+
 ---
 
 ## 🏗️ Architecture
@@ -134,8 +140,12 @@ decisions = coda.predict_three_tier(X)  # → ['approve', 'review', 'deny', ...]
 
 # Tier distribution
 print(coda.decision_rule.tier_distribution(coda.predict_proba(X)))
-# → {'approve_pct': 72.1, 'review_pct': 14.8, 'deny_pct': 13.1}
+# → {'approve_pct': 97.1, 'review_pct': 2.9, 'deny_pct': 0.0}
 ```
+
+> **Note:** on the default synthetic dataset the deny tier is empty — the cost-optimal threshold sits
+> above every predicted probability, so nothing clears `t* + δ`. Tier proportions are highly
+> dataset- and δ-dependent; these are not representative production values.
 
 ---
 
@@ -147,7 +157,14 @@ This project implements **8 novel contributions** from the CODA/CODA+ paper:
 Per-instance sample weights derived from the economic cost model (α·vᵢ for fraud, β for legit), so models **learn to minimize cost**, not just accuracy.
 
 ### 2. Optimal Decision Threshold Search (`src/threshold_optimizer.py`)
-Sweeps decision thresholds from 0.05 to 0.95 and proves the **cost-optimal threshold t* < 0.5**. Grounded in Bayes decision theory.
+Sweeps decision thresholds over [0.0, 1.0] in 100 steps (`n_steps=100`, step size 0.01) and selects
+the cost-minimising threshold t*. Grounded in Bayes decision theory.
+
+> **Correction:** this section previously claimed the sweep runs "from 0.05 to 0.95" and *proves*
+> **t\* < 0.5**. Both are wrong. The implemented range is [0.0, 1.0], and t* is not always below 0.5
+> — the repository's own results include t\* = 0.9 and t\* = 0.75 for CHL-LightGBM, and a mean
+> adaptive t\*(x) = 0.76 for CODA+ (`experiments_output.txt`). t* depends on the cost ratio and the
+> model's calibration; it is below 0.5 only when false negatives dominate the cost.
 
 ### 3. Dynamic Cost Sensitivity Analysis (`src/sensitivity_analysis.py`)
 Shows that the optimal strategy is **environment-dependent** via 2D heatmaps over (α, β) space.
@@ -156,7 +173,9 @@ Shows that the optimal strategy is **environment-dependent** via 2D heatmaps ove
 Frames strategy selection as a **multi-objective optimization** problem (accuracy vs cost).
 
 ### 5. Three-Tier Decision System (`src/coda.py`)
-Production-ready output: **auto-approve** (~72%), **manual review** (~15%), **auto-deny** (~13%) with tunable confidence margin δ.
+Three-tier output — **auto-approve / manual review / auto-deny** — with tunable confidence margin δ.
+Tier proportions depend entirely on the dataset and δ; on the default synthetic data the split is
+≈97% / 3% / 0% (the deny tier is empty), not the ~72/15/13 previously stated here.
 
 ### 6. Bootstrap Validation & Ablation (`src/coda.py`)
 - **Bootstrap resampling** (B = 1,000) with p-value testing
@@ -165,8 +184,19 @@ Production-ready output: **auto-approve** (~72%), **manual review** (~15%), **au
 ### 7. CODA+ Dynamic Cost Learning (`src/coda.py`)
 Instance-adaptive cost functions α(x) and β(x) via Ridge regression. Replaces static global costs with **per-transaction Bayes-optimal thresholds** t*(xᵢ) = β(xᵢ) / (α(xᵢ)·vᵢ + β(xᵢ)).
 
+> **⚠️ Retracted — the learned cost functions are degenerate.** The audit found α̂ = 2v *exactly*
+> (R² = 1.000, MAE = 0.000): the regressor recovers the constant multiplier it was constructed from,
+> so the reported "R² = 1.0 held-out validation" is a **tautology, not a quality signal**. The audit
+> further reports β̂ ≡ 500 constant (CV = 0). Because CODA+ then scores itself on these self-generated
+> costs, the resulting gains do not reproduce under a common external cost.
+
 ### 8. CHL-LightGBM Baseline Comparison
 Direct comparison with Zhao et al. (2024) CHL-LightGBM. Demonstrates that **highest AUC ≠ lowest cost** — CHL is miscalibrated (Brier = 0.095) and economically suboptimal.
+
+> **⚠️ Partially retracted.** The *economic* half of this comparison was run under the self-scoring
+> setup and was never re-verified under the common metric — **it should not be cited as evidence**.
+> The *calibration* half stands: Brier = 0.095 is metric-independent, and CHL-LightGBM is genuinely
+> the worst-calibrated model in the comparison.
 
 ---
 
@@ -281,26 +311,46 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 | Weight computation | O(n) |
 | Training (LightGBM) | O(n·d) |
 | Training (XGBoost) | O(n·d·log n) |
-| Threshold search | O(k·n), k=19 |
+| Threshold search | O(k·n), k=101 (`n_steps=100`) |
 | Inference (three-tier) | O(1) per prediction |
 
 ---
 
 ## 📈 Key Results
 
+> **⚠️ Retracted — do not cite.** Every cost-reduction figure in this table was produced under the
+> self-scoring setup described in the notice at the top of this file: CODA/CODA+ were scored on the
+> cost function they generated themselves, while baselines were scored on a different one. Under a
+> single common external cost (FN = amount, FP = 50), CODA+ is **3.3% worse** than the Höppner
+> csboost baseline on IEEE-CIS (Δcost +12,900, p_Holm = 0.031) and worse on European Credit Card
+> (+22,147, p_Holm = 0.0025). The table is preserved unmodified for the audit record.
+>
+> Status key: ❌ contradicted under the common metric · ⚠️ never re-verified under the common
+> metric · ✅ metric-independent, still valid.
+
+| Finding | Result | Status |
+|---------|--------|--------|
+| Accuracy ≠ Cost-Optimality | XGBoost: highest accuracy but 16.7% cost premium | ⚠️ |
+| **CODA+ (full-scale IEEE-CIS)** | **−25.5% cost reduction** (590K transactions, no PCA) | ❌ |
+| CODA static | −4.1% on full-scale IEEE-CIS | ⚠️ |
+| CHL-LightGBM | Best AUC (0.919) but **worst cost (+22.1%)** — calibration failure | ⚠️ |
+| Brier scores | LightGBM: 0.021 (best), CHL: 0.095 (worst) | ✅ |
+| Held-out α/β validation | β(x) R²=0.77 on held-out data | ❌ |
+| Ablation: weighting only | −12.1% cost reduction | ⚠️ |
+| Ablation: threshold only | −17.0% cost reduction | ⚠️ |
+| Ablation: full CODA | −23.8% cost reduction | ⚠️ |
+| Ablation: full CODA+ | −29.0% cost reduction | ❌ |
+| Bootstrap significance | p < 0.01 (B = 1,000) | ❌ |
+
+### What survives the audit
+
 | Finding | Result |
 |---------|--------|
-| Accuracy ≠ Cost-Optimality | XGBoost: highest accuracy but 16.7% cost premium |
-| **CODA+ (full-scale IEEE-CIS)** | **−25.5% cost reduction** (590K transactions, no PCA) |
-| CODA static | −4.1% on full-scale IEEE-CIS |
-| CHL-LightGBM | Best AUC (0.919) but **worst cost (+22.1%)** — calibration failure |
-| Brier scores | LightGBM: 0.021 (best), CHL: 0.095 (worst) |
-| Held-out α/β validation | β(x) R²=0.77 on held-out data |
-| Ablation: weighting only | −12.1% cost reduction |
-| Ablation: threshold only | −17.0% cost reduction |
-| Ablation: full CODA | −23.8% cost reduction |
-| Ablation: full CODA+ | −29.0% cost reduction |
-| Bootstrap significance | p < 0.01 (B = 1,000) |
+| **Cost-sensitive thresholding beats accuracy-optimised models** | csboost **0.357** savings vs cost-insensitive **0.262** on IEEE-CIS |
+| Calibration is metric-independent | LightGBM Brier 0.021 (best), CHL-LightGBM 0.095 (worst) |
+
+This is the defensible result: *thresholding on cost* is what pays off. The additional machinery of
+learned per-instance cost functions (CODA+) is not what produced the reported gains.
 
 ---
 
@@ -323,7 +373,13 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 - Synthetic dataset models refund-approval probability (not raw fraud prevalence); the ~54% positive rate is a product of the label generation formula, not a calibrated real-world fraud rate
 - PaySim uses 10K subsample from 6.3M transactions; full-scale evaluation is future work
 - CODA+ cost regressors use feature-derived proxies, not observed business outcomes
-- Linear Ridge models for α(x)/β(x) — R²=0.77 for β(x) leaves room for nonlinear models
+- **CODA+ cost regressors are degenerate.** α̂ = 2v exactly (R² = 1.000, MAE = 0.000) — the regressor
+  merely recovers the constant multiplier it was constructed from, so the reported R² is a tautology
+  rather than evidence of fit quality. The audit additionally reports β̂ ≡ 500 constant (CV = 0).
+  Reported CODA+ gains are a self-scoring artifact and do not reproduce under a common external cost
+- **Headline cost-reduction results are retracted** — see the notice at the top of this file and the
+  status column in Key Results. Under a common metric (FN = amount, FP = 50), CODA+ is 3.3% worse
+  than the csboost baseline on IEEE-CIS
 - Missing high-signal features (account age, device fingerprinting)
 - AI-generated image fraud not addressed in tabular framework
 - Offline only — end-to-end latency not benchmarked
