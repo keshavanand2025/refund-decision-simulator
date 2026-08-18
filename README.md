@@ -386,7 +386,7 @@ These are the capabilities the codebase implements. Several were evaluated under
 - [x] ~~Multi-dataset validation (IEEE-CIS, PaySim)~~
 - [x] ~~LightGBM integration~~
 - [x] ~~CODA+ dynamic cost learning (α(x), β(x))~~
-- [x] ~~Full-scale IEEE-CIS (590K) without PCA~~
+- [x] ~~Full-scale IEEE-CIS (590K) without PCA~~ (run by a separate script not included in this repository)
 - [x] ~~CHL-LightGBM baseline comparison~~
 - [x] ~~Brier scores and calibration analysis~~
 - [ ] Full-scale PaySim (6.3M) evaluation
