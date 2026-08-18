@@ -347,7 +347,9 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 
 ## 🔑 Core Concepts Demonstrated
 
-- **CODA Algorithm** — Formal, reproducible cost-optimal decision pipeline
+These are the capabilities the codebase implements. Several were evaluated under the self-scoring setup the audit retracts — see Key Results above for the status of each finding.
+
+- **CODA Algorithm** — Formal cost-optimal decision pipeline
 - **Three-Tier Decision Output** — Production-ready approve/review/deny system
 - **Cost-Sensitive Decision Making** — Not all errors are equal
 - **Bayes Decision Theory** — Theoretical grounding for threshold shift
@@ -361,14 +363,11 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 
 ## ⚠️ Limitations
 
+- The reported CODA/CODA+ cost reductions were produced by self-scoring — each method evaluated against the cost function it generated. Under a common external cost the gains do not hold (see the notice at the top)
 - Synthetic dataset models refund-approval probability (not raw fraud prevalence); the ~54% positive rate is a product of the label generation formula, not a calibrated real-world fraud rate
 - PaySim uses 10K subsample from 6.3M transactions; full-scale evaluation is future work
 - CODA+ cost regressors use feature-derived proxies, not observed business outcomes
-- **Superseded by the audit.** This entry previously read *"Linear Ridge models for α(x)/β(x) —
-  R²=0.77 for β(x) leaves room for nonlinear models."* The audit found the shipped β targets to be
-  **constant at 500, with a coefficient of variation of 0** — β̂ is not a fitted function at all, so
-  the R²=0.77 figure describes an earlier cost configuration. The limitation as stated no longer
-  applies: the defect is degeneracy of the cost targets, not the choice of model class
+- Learned cost targets are degenerate — the shipped β is constant at 500 (CV = 0), not a fitted function. This supersedes an earlier entry attributing the limitation to Ridge model class (R²=0.77)
 - Missing high-signal features (account age, device fingerprinting)
 - AI-generated image fraud not addressed in tabular framework
 - Offline only — end-to-end latency not benchmarked
@@ -393,7 +392,7 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 - [ ] Full-scale PaySim (6.3M) evaluation
 - [ ] Real-time REST API via FastAPI
 - [ ] Online learning and concept drift adaptation
-- [ ] Nonlinear cost models (neural network or gradient boosting for α/β)
+- [ ] Non-degenerate cost targets — a feature-dependent FP target not recoverable in closed form from the transaction amount
 - [ ] Calibrating α(x)/β(x) against observed chargeback rates
 - [ ] Multimodal claim verification (GAN detection)
 
