@@ -1,3 +1,38 @@
+################################################################
+# STALE PRE-AUDIT OUTPUT - PRESERVED FOR THE AUDIT RECORD.
+# DO NOT CITE.
+################################################################
+#
+# THIS FILE PREDATES THE AUDIT described in the notice at the top
+# of README.md. It is kept unmodified so the audit can be
+# reproduced against it.
+#
+# DIFFERENT SPLIT. This run used a 70/30 split, which is why its
+# split line reads Train: 413,378 / Test: 177,162 (line 41).
+# The paper uses a 60/20/20 split, evaluating on a test set of
+# 118,109 for IEEE-CIS and 56,597 for European Credit Card.
+#
+# DIFFERENT COST CONFIGURATION. The cost configuration used here
+# is not the one the paper audits. Figures below are therefore
+# NOT comparable to the figures in the paper.
+#
+# RETRACTED. The "+25.5%" CODA+ result (lines 98 and 179 below;
+# lines 63 and 144 before this header was added) is a
+# self-scoring artifact: CODA/CODA+ were scored on the cost
+# function they generated themselves, while baselines were scored
+# on a different one. It does not reproduce under a common
+# external cost and is retracted.
+#
+# BETA FIGURES DO NOT DESCRIBE THE AUDITED ARTIFACTS. The beta
+# figures in this file (R2 = 0.7571, range [100, 29444]) describe
+# an earlier cost configuration. In the artifacts the paper
+# audits, beta-hat is exactly 500 in every row (CV = 0) - a
+# constant, not a learned function.
+#
+# See: "Re-Scoring Self-Scored Methods: A Pre-Specified Audit of
+# Learned Cost-Sensitive Fraud Detection" (IEEE ICDM 2026).
+################################################################
+
 ============================================================
 LOADING IEEE-CIS (full scale)
 Loaded: 590,540 rows, 394 columns, 27.3s
