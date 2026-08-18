@@ -15,7 +15,10 @@ Includes the Cost-Optimal Decision Algorithm (CODA) with:
 Modules:
     - config: Centralized project configuration and constants
     - data_generator: Synthetic dataset generation
-    - dataset_loader: IEEE-CIS (full-scale) and PaySim dataset loading
+    - dataset_loader: IEEE-CIS and PaySim loading. Returns a PCA-projected
+      5-feature subsample (default 10,000 rows); the full-scale 194-feature
+      no-PCA run documented in experiments_output.txt was produced by a
+      separate script not included in this repository
     - rule_engine: Rule-based decision strategies
     - model: ML model training, tuning, and evaluation
     - metrics: Economic cost and classification metrics
