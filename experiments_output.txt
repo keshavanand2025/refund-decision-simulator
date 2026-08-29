@@ -1,6 +1,6 @@
 ################################################################
-# STALE PRE-AUDIT OUTPUT - PRESERVED FOR THE AUDIT RECORD.
-# DO NOT CITE.
+# SUPERSEDED - STALE PRE-AUDIT OUTPUT.
+# PRESERVED FOR THE AUDIT RECORD. DO NOT CITE.
 ################################################################
 #
 # THIS FILE PREDATES THE AUDIT described in the notice at the top

@@ -1,4 +1,10 @@
-> **⚠️ Notice (August 2026):** The headline results below — including the +25.5% CODA+ cost reduction — were found to be self-scoring artifacts and do not reproduce under a common external cost metric. Under a fair comparison, CODA+ does not beat the csboost baseline. See the audit paper *"Re-Scoring Self-Scored Methods: A Pre-Specified Audit of Learned Cost-Sensitive Fraud Detection"* (IEEE ICDM 2026 Teen Research Track). Code and results below are preserved unmodified for the audit record.
+> ## ⚠️ SUPERSEDED RESULT — DO NOT CITE THE +25.5% FIGURE
+>
+> - **The +25.5% cost reduction reported for CODA+ on IEEE-CIS is superseded and should not be cited.**
+> - Under a **pre-specified re-evaluation** that scores every method on a **single common external cost**, CODA+ shows **no significant advantage** over the Höppner `csboost` baseline, and is **significantly worse on IEEE-CIS**.
+> - A **degeneracy diagnostic** shows the learned cost functions collapse to a fixed specification: α̂ = **2 × amount** (R² = **1.000**) with **constant** β̂ (CV = **0**) — i.e. mathematically equivalent to a fixed cost specification, not a learned one.
+> - **Cite instead:** K. Anand, *"Re-Scoring Self-Scored Methods: A Pre-Specified Audit of Learned Cost-Sensitive Fraud Detection,"* 2026.
+> - **The sections below are retained as a record of the original work.** They are not corrected in place, and their figures should be read as the pre-audit record only.
 
 > **Note on the audit harness.** This repository contains CODA/CODA+ — the method audited by the
 > paper above, not the audit itself. The evaluation harness (csboost baselines, common-cost scorer,
@@ -332,15 +338,15 @@ All models use **StandardScaler**, **5-fold cross-validation**, and **GridSearch
 | Finding | Result | Status |
 |---------|--------|--------|
 | Accuracy ≠ Cost-Optimality | XGBoost: highest accuracy but 16.7% cost premium | ⚠️ |
-| **CODA+ (full-scale IEEE-CIS)** | **−25.5% cost reduction** (590K transactions, no PCA) | ❌ |
+| **CODA+ (full-scale IEEE-CIS)** | **SUPERSEDED** — ~~**−25.5% cost reduction**~~ (590K transactions, no PCA) | ❌ |
 | CODA static | −4.1% on full-scale IEEE-CIS | ⚠️ |
 | CHL-LightGBM | Best AUC (0.919) but **worst cost (+22.1%)** — calibration failure | ⚠️ |
 | Brier scores | LightGBM: 0.021 (best), CHL: 0.095 (worst) | ✅ |
 | Held-out α/β validation | β(x) R²=0.77 on held-out data | ❌ |
-| Ablation: weighting only | −12.1% cost reduction | ⚠️ |
-| Ablation: threshold only | −17.0% cost reduction | ⚠️ |
-| Ablation: full CODA | −23.8% cost reduction | ⚠️ |
-| Ablation: full CODA+ | −29.0% cost reduction | ❌ |
+| Ablation: weighting only | **SUPERSEDED** — ~~−12.1% cost reduction~~ | ⚠️ |
+| Ablation: threshold only | **SUPERSEDED** — ~~−17.0% cost reduction~~ | ⚠️ |
+| Ablation: full CODA | **SUPERSEDED** — ~~−23.8% cost reduction~~ | ⚠️ |
+| Ablation: full CODA+ | **SUPERSEDED** — ~~−29.0% cost reduction~~ | ❌ |
 | Bootstrap significance | p < 0.01 (B = 1,000) | ❌ |
 
 ---
@@ -400,12 +406,15 @@ These are the capabilities the codebase implements. Several were evaluated under
 
 ## 📄 Citation
 
-If you use this code, please cite:
+If you use this code, please cite the audit paper:
 
 ```
-K. Anand, "CODA: A Cost-Sensitive Decision Framework for
-Economic Optimisation in Fraud Detection," 2026.
+K. Anand, "Re-Scoring Self-Scored Methods: A Pre-Specified Audit
+of Learned Cost-Sensitive Fraud Detection," 2026.
 ```
+
+> The earlier CODA framework paper is **superseded** for the results it reported on IEEE-CIS and
+> should not be cited for the +25.5% figure. See the notice at the top of this file.
 
 ---
 
