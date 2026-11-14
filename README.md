@@ -1,4 +1,4 @@
-> **⚠️ Notice (August 2026):** The headline results below — including the +25.5% CODA+ cost reduction — were found to be self-scoring artifacts and do not reproduce under a common external cost metric. Under a fair comparison, CODA+ does not beat the csboost baseline. See the audit paper *"Re-Scoring Self-Scored Methods: A Pre-Specified Audit of Learned Cost-Sensitive Fraud Detection"* (IEEE ICDM 2026 Teen Research Track). Code and results below are preserved unmodified for the audit record.
+> **⚠️ Notice (updated November 2026):** The +25.5% CODA+ cost reduction reported below depended on how it was scored. Re-scoring the same 177,162 test decisions from the original run: self-scoring (CODA+ evaluated on its own learned costs) accounts for 10.1 points; with both methods on the original fixed cost the gain is +15.4%; with both on one common external cost (missed fraud = v, false alarm = b = 50) it is +0.9%, not significant, and its sign depends on b (+29.9% at b = 10, +18.1% at 25, −26.7% at 100). In the pre-specified audit against the published csboost baseline, CODA+ never significantly beats it. See the audit paper *"Re-Scoring Self-Scored Methods: A Pre-Specified Audit of Learned Cost-Sensitive Fraud Detection"* (IEEE ICDM 2026 Teen Research Track). Code and results below are preserved unmodified for the audit record.
 
 > **Note on the audit harness.** This repository contains CODA/CODA+ — the method audited by the
 > paper above, not the audit itself. The evaluation harness (csboost baselines, common-cost scorer,
@@ -28,7 +28,7 @@ Online platforms make thousands of refund decisions daily. This project demonstr
 ### Key Insight
 > A model with higher accuracy can have **higher economic cost** than a simpler model. CODA+ achieves **25.5% cost reduction** on full-scale IEEE-CIS (590K transactions). CHL-LightGBM has the best AUC (0.919) but the **worst economic cost** (+22.1%) due to calibration failure.
 
-> **⚠️ Retracted.** The 25.5% figure above is a self-scoring artifact, and the CHL-LightGBM economic comparison was never re-verified under the common metric — neither should be cited; see *What survives the audit* below.
+> **⚠️ Retracted.** The 25.5% figure above should not be cited: it depended on CODA+ being scored on its own learned costs and on the choice of cost function (see the notice at the top). The CHL-LightGBM economic comparison was never re-verified under the common metric either — see *What survives the audit* below.
 
 ### What survives the audit
 
@@ -36,6 +36,7 @@ The paper's final numbers, measured under a single common external cost:
 
 | Finding | Result |
 |---------|--------|
+| How the reported +25.5% came apart (same 177,162 test decisions) | **+25.5%** on CODA+'s own costs → **+15.4%** on the original fixed cost → **+0.9%** (not significant) on one common cost, b = 50 |
 | **Cost-sensitive thresholding beats accuracy-optimised models** | csboost **0.357** savings vs cost-insensitive **0.262** on IEEE-CIS |
 | CODA+ vs csboost baseline (IEEE-CIS) | CODA+ is **3.3% worse** — Δcost **+12,900**, p_Holm = **0.031** |
 | CODA+ vs csboost baseline (European Credit Card) | **Null contrast** — Δcost **−66.8**, p_Holm = **1.000** |
@@ -363,7 +364,7 @@ These are the capabilities the codebase implements. Several were evaluated under
 
 ## ⚠️ Limitations
 
-- The reported CODA/CODA+ cost reductions were produced by self-scoring — each method evaluated against the cost function it generated. Under a common external cost the gains do not hold (see the notice at the top)
+- The reported CODA/CODA+ cost reductions were measured with each method scored on the cost function it generated. Re-scored on one common external cost, the gain falls to +0.9% (not significant at b = 50) and its sign depends on b (see the notice at the top)
 - Synthetic dataset models refund-approval probability (not raw fraud prevalence); the ~54% positive rate is a product of the label generation formula, not a calibrated real-world fraud rate
 - PaySim uses 10K subsample from 6.3M transactions; full-scale evaluation is future work
 - CODA+ cost regressors use feature-derived proxies, not observed business outcomes
